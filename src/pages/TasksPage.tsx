@@ -6,7 +6,7 @@ import { Button } from '@/components/shared/Button';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskFilters } from '@/components/tasks/TaskFilters';
 import { TaskForm } from '@/components/tasks/TaskForm';
-import type { CreateTaskInput } from '@/domain/tasks/Task';
+import type { CreateTaskInput, Task } from '@/domain/tasks/Task';
 
 export function TasksPage() {
   const {
@@ -19,7 +19,11 @@ export function TasksPage() {
     createTask,
     completeTask,
     deleteTask,
+    addSubtask,
     toggleSubtask,
+    deleteSubtask,
+    updateSubtask,
+    updateTask,
     setFilter,
     setActiveTask,
     getFilteredTasks,
@@ -51,6 +55,22 @@ export function TasksPage() {
     if (xpChange !== 0) {
       console.log(`Subtask toggled: ${xpChange > 0 ? '+' : ''}${xpChange} XP`);
     }
+  };
+
+  const handleAddSubtask = async (taskId: string, title: string) => {
+    await addSubtask(taskId, title);
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    await deleteSubtask(subtaskId);
+  };
+
+  const handleUpdateSubtask = async (subtaskId: string, title: string) => {
+    await updateSubtask(subtaskId, title);
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    await updateTask(taskId, updates);
   };
 
   // Task drag handlers
@@ -214,6 +234,10 @@ export function TasksPage() {
                 onComplete={handleCompleteTask}
                 onDelete={deleteTask}
                 onToggleSubtask={handleToggleSubtask}
+                onAddSubtask={handleAddSubtask}
+                onDeleteSubtask={handleDeleteSubtask}
+                onUpdateSubtask={handleUpdateSubtask}
+                onUpdateTask={handleUpdateTask}
                 onSetActive={setActiveTask}
                 onReorderSubtasks={handleReorderSubtasks}
                 onDragStart={() => handleTaskDragStart(index)}

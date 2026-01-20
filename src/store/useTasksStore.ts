@@ -25,7 +25,7 @@ interface TasksStore {
 
   // Inicialização
   initDb: () => Promise<void>;
-  loadTasks: () => Promise<void>;
+  loadTasks: (options?: { silent?: boolean }) => Promise<void>;
 
   // CRUD Tasks
   createTask: (input: CreateTaskInput) => Promise<Task | null>;
@@ -37,6 +37,7 @@ interface TasksStore {
   addSubtask: (taskId: string, title: string) => Promise<void>;
   toggleSubtask: (subtaskId: string) => Promise<number>; // Retorna XP ganho (ou 0)
   deleteSubtask: (subtaskId: string) => Promise<void>;
+  updateSubtask: (subtaskId: string, title: string) => Promise<void>;
   reorderSubtasks: (taskId: string, subtaskIds: string[]) => Promise<void>;
 
   // Reordering
@@ -74,9 +75,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
     }
   },
 
-  loadTasks: async () => {
+  loadTasks: async (options) => {
     try {
-      set({ loading: true });
+      const silent = options?.silent ?? false;
+      if (!silent) {
+        set({ loading: true });
+      }
       let { db } = get();
 
       if (!db) {
@@ -182,12 +186,17 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
   updateTask: async (taskId: string, updates: Partial<Task>) => {
     try {
-      const { db } = get();
+      const { db, tasks, subtasks } = get();
       if (!db) return;
+
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
 
       const fields: string[] = [];
       const values: unknown[] = [];
       let paramIndex = 1;
+      let updatedXpReward = task.xpReward;
+      let effortChanged = false;
 
       if (updates.title !== undefined) {
         fields.push(`title = $${paramIndex++}`);
@@ -206,6 +215,8 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         values.push(config.xpReward);
         fields.push(`xp_penalty = $${paramIndex++}`);
         values.push(config.xpPenalty);
+        updatedXpReward = config.xpReward;
+        effortChanged = updates.effort !== task.effort;
       }
       if (updates.deadline !== undefined) {
         fields.push(`deadline = $${paramIndex++}`);
@@ -224,7 +235,38 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         values
       );
 
-      await get().loadTasks();
+      if (effortChanged) {
+        const taskSubtasks = subtasks.filter((s) => s.taskId === taskId);
+        if (taskSubtasks.length > 0) {
+          const xpPerSubtask = Math.floor(updatedXpReward / taskSubtasks.length);
+          const completedSubtasks = taskSubtasks.filter((s) => s.completed);
+          const completedXpBefore = completedSubtasks.reduce((sum, s) => sum + s.xpReward, 0);
+          const completedXpAfter = completedSubtasks.length * xpPerSubtask;
+          const xpDelta = completedXpAfter - completedXpBefore;
+
+          for (const subtask of taskSubtasks) {
+            await db.execute(
+              'UPDATE subtasks SET xp_reward = $1 WHERE id = $2',
+              [xpPerSubtask, subtask.id]
+            );
+          }
+
+          await db.execute(
+            'UPDATE tasks SET xp_earned = $1 WHERE id = $2',
+            [Math.max(0, completedXpAfter), taskId]
+          );
+
+          if (xpDelta !== 0) {
+            await db.execute(
+              'UPDATE user_progress SET total_xp = MAX(0, total_xp + $1) WHERE id = 1',
+              [xpDelta]
+            );
+            await useStatsStore.getState().loadStats();
+          }
+        }
+      }
+
+      await get().loadTasks({ silent: true });
     } catch (error) {
       console.error('[TasksStore] Error updating task:', error);
     }
@@ -313,22 +355,31 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       const { db, tasks, subtasks } = get();
       if (!db) return;
 
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) return;
+
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
+      if (task.status === 'completed') return;
 
       // Contar subtarefas existentes para determinar ordem
       const existingSubtasks = subtasks.filter((s) => s.taskId === taskId);
+      if (existingSubtasks.length >= 10) return;
       const order = existingSubtasks.length;
 
       // Recalcular XP por subtarefa
       const totalSubtasks = existingSubtasks.length + 1;
       const xpPerSubtask = Math.floor(task.xpReward / totalSubtasks);
+      const completedSubtasks = existingSubtasks.filter((s) => s.completed);
+      const completedXpBefore = completedSubtasks.reduce((sum, s) => sum + s.xpReward, 0);
+      const completedXpAfter = completedSubtasks.length * xpPerSubtask;
+      const xpDelta = completedXpAfter - completedXpBefore;
 
       // Criar nova subtarefa
       const newSubtask: Subtask = {
         id: TaskEngine.generateId(),
         taskId,
-        title,
+        title: trimmedTitle,
         completed: false,
         xpReward: xpPerSubtask,
         order,
@@ -348,7 +399,21 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         );
       }
 
-      await get().loadTasks();
+      if (completedSubtasks.length > 0 || xpDelta !== 0) {
+        await db.execute(
+          'UPDATE tasks SET xp_earned = $1 WHERE id = $2',
+          [Math.max(0, completedXpAfter), taskId]
+        );
+        if (xpDelta !== 0) {
+          await db.execute(
+            'UPDATE user_progress SET total_xp = MAX(0, total_xp + $1) WHERE id = 1',
+            [xpDelta]
+          );
+          await useStatsStore.getState().loadStats();
+        }
+      }
+
+      await get().loadTasks({ silent: true });
     } catch (error) {
       console.error('[TasksStore] Error adding subtask:', error);
     }
@@ -431,22 +496,18 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
       const task = tasks.find((t) => t.id === subtask.taskId);
       if (!task) return;
+      if (task.status === 'completed') return;
 
-      // Se a subtarefa estava completa, remover o XP earned da task
-      if (subtask.completed) {
-        await db.execute(
-          'UPDATE tasks SET xp_earned = MAX(0, xp_earned - $1) WHERE id = $2',
-          [subtask.xpReward, subtask.taskId]
-        );
-      }
+      const taskSubtasks = subtasks.filter((s) => s.taskId === subtask.taskId);
+      const completedXpBefore = taskSubtasks
+        .filter((s) => s.completed)
+        .reduce((sum, s) => sum + s.xpReward, 0);
 
       // Deletar subtarefa
       await db.execute('DELETE FROM subtasks WHERE id = $1', [subtaskId]);
 
       // Recalcular XP das subtarefas restantes
-      const remainingSubtasks = subtasks.filter(
-        (s) => s.taskId === subtask.taskId && s.id !== subtaskId
-      );
+      const remainingSubtasks = taskSubtasks.filter((s) => s.id !== subtaskId);
 
       if (remainingSubtasks.length > 0) {
         const xpPerSubtask = Math.floor(task.xpReward / remainingSubtasks.length);
@@ -456,11 +517,68 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
             [xpPerSubtask, s.id]
           );
         }
+        const completedXpAfter = remainingSubtasks.filter((s) => s.completed).length * xpPerSubtask;
+        const xpDelta = completedXpAfter - completedXpBefore;
+        await db.execute(
+          'UPDATE tasks SET xp_earned = $1 WHERE id = $2',
+          [Math.max(0, completedXpAfter), subtask.taskId]
+        );
+        if (xpDelta !== 0) {
+          await db.execute(
+            'UPDATE user_progress SET total_xp = MAX(0, total_xp + $1) WHERE id = 1',
+            [xpDelta]
+          );
+          await useStatsStore.getState().loadStats();
+        }
+      } else {
+        const xpDelta = -completedXpBefore;
+        await db.execute(
+          'UPDATE tasks SET xp_earned = 0 WHERE id = $1',
+          [subtask.taskId]
+        );
+        if (xpDelta !== 0) {
+          await db.execute(
+            'UPDATE user_progress SET total_xp = MAX(0, total_xp + $1) WHERE id = 1',
+            [xpDelta]
+          );
+          await useStatsStore.getState().loadStats();
+        }
       }
 
-      await get().loadTasks();
+      await get().loadTasks({ silent: true });
     } catch (error) {
       console.error('[TasksStore] Error deleting subtask:', error);
+    }
+  },
+
+  updateSubtask: async (subtaskId: string, title: string) => {
+    try {
+      const { db, subtasks, tasks } = get();
+      if (!db) return;
+
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) return;
+
+      const subtask = subtasks.find((s) => s.id === subtaskId);
+      if (!subtask) return;
+
+      const task = tasks.find((t) => t.id === subtask.taskId);
+      if (!task || task.status === 'completed') return;
+
+      if (subtask.title === trimmedTitle) return;
+
+      const updatedSubtasks = subtasks.map((s) =>
+        s.id === subtaskId ? { ...s, title: trimmedTitle } : s
+      );
+
+      set({ subtasks: updatedSubtasks });
+
+      await db.execute('UPDATE subtasks SET title = $1 WHERE id = $2', [
+        trimmedTitle,
+        subtaskId,
+      ]);
+    } catch (error) {
+      console.error('[TasksStore] Error updating subtask:', error);
     }
   },
 
