@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f0d0b"/>
+      <stop offset="100%" stop-color="#1a1612"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c9a227"/>
+      <stop offset="100%" stop-color="#dbb84a"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="700" rx="28" fill="url(#bg)"/>
+  <rect x="60" y="60" width="1080" height="580" rx="24" fill="#252019" stroke="#4a4035" stroke-width="2"/>
+
+  <text x="90" y="130" font-family="Inter, system-ui, sans-serif" font-size="28" fill="url(#gold)">PERGAMINHOS</text>
+  <text x="90" y="165" font-family="Inter, system-ui, sans-serif" font-size="16" fill="#7a6f5d">Tasks, etapas e recompensas</text>
+
+  <g>
+    <rect x="90" y="210" width="1020" height="120" rx="20" fill="#1a1612" stroke="#4a4035"/>
+    <rect x="120" y="240" width="420" height="20" rx="10" fill="#2d271f"/>
+    <rect x="120" y="270" width="260" height="16" rx="8" fill="#2d271f"/>
+    <rect x="860" y="240" width="200" height="44" rx="12" fill="#c9a227"/>
+    <text x="885" y="268" font-family="Inter, system-ui, sans-serif" font-size="14" fill="#0f0d0b">NOVO</text>
+  </g>
+
+  <g>
+    <rect x="90" y="360" width="320" height="220" rx="20" fill="#1a1612" stroke="#4a4035"/>
+    <rect x="120" y="395" width="200" height="16" rx="8" fill="#2d271f"/>
+    <rect x="120" y="430" width="260" height="12" rx="6" fill="#2d271f"/>
+    <rect x="120" y="470" width="120" height="10" rx="5" fill="#c9a227"/>
+  </g>
+
+  <g>
+    <rect x="440" y="360" width="320" height="220" rx="20" fill="#1a1612" stroke="#4a4035"/>
+    <rect x="470" y="395" width="200" height="16" rx="8" fill="#2d271f"/>
+    <rect x="470" y="430" width="260" height="12" rx="6" fill="#2d271f"/>
+    <rect x="470" y="470" width="120" height="10" rx="5" fill="#722f37"/>
+  </g>
+
+  <g>
+    <rect x="790" y="360" width="320" height="220" rx="20" fill="#1a1612" stroke="#4a4035"/>
+    <rect x="820" y="395" width="200" height="16" rx="8" fill="#2d271f"/>
+    <rect x="820" y="430" width="260" height="12" rx="6" fill="#2d271f"/>
+    <rect x="820" y="470" width="120" height="10" rx="5" fill="#2d6a4f"/>
+  </g>
+
+  <text x="90" y="610" font-family="Inter, system-ui, sans-serif" font-size="16" fill="#7a6f5d">Preview placeholder • Replace with real screenshot</text>
+</svg>

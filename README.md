@@ -1,8 +1,20 @@
 # Aeon ⏳
 
+[![License: MIT](https://img.shields.io/github/license/pedronalis/aeon)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/pedronalis/aeon/main)](https://github.com/pedronalis/aeon/commits/main)
+[![Repo Size](https://img.shields.io/github/repo-size/pedronalis/aeon)](https://github.com/pedronalis/aeon)
+
 > _Domine seu tempo, forje sua eternidade_
 
-Aeon é um aplicativo desktop de Pomodoro com foco em precisão, gamificação e um tema medieval premium. Ele roda offline, guarda seus dados localmente e oferece modos de foco customizáveis.
+Aeon é um aplicativo desktop de Pomodoro com foco em precisão, gamificação e um tema medieval premium. Roda offline, guarda seus dados localmente e oferece modos de foco personalizáveis.
+
+## 🖼️ Screenshots
+
+| Timer | Pergaminhos |
+| --- | --- |
+| ![Timer](docs/screenshots/aeon-timer.svg) | ![Pergaminhos](docs/screenshots/aeon-pergaminhos.svg) |
+
+> As imagens são placeholders. Substitua pelos screenshots reais quando quiser.
 
 ## ✨ Destaques
 
@@ -71,10 +83,25 @@ VITE_AEON_LOW_FX=1 npm run tauri:dev
 ./scripts/detect-env.sh
 ```
 
+### Scripts úteis
+
+```bash
+npm run tauri:dev:wayland
+npm run tauri:dev:wayland-nvidia
+npm run tauri:dev:wayland-intel
+npm run tauri:dev:x11
+npm run tauri:dev:software
+npm run tauri:build
+```
+
 ## 💾 Banco de dados
 
 - Linux: `~/.local/share/com.pedro.aeon/pomodore.db`
-- Migrations em `src-tauri/src/db.rs`
+- Migrations: `src-tauri/src/db.rs`
+
+## 📚 Documentação
+
+- `docs/QUEST_SYSTEM.md`
 
 ## 🧪 Testes
 
