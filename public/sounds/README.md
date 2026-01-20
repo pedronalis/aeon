@@ -4,17 +4,15 @@ This directory should contain the completion sound file.
 
 ## Required File
 
-- `complete.mp3` - Sound played when a focus session completes
+- `complete.wav` - Sound played when a focus session completes
 
-## How to Add
+## How to Replace
 
-You can:
-1. Download a free sound from https://freesound.org/
-2. Use any MP3 file (keep it short, ~1-2 seconds)
-3. Generate one using online tools
+- Use any WAV file (keep it short, ~1-2 seconds)
+- Replace `public/sounds/complete.wav`
 
-The app will attempt to play `/sounds/complete.mp3` when a focus session completes.
-If the file doesn't exist, the sound will simply be skipped (no error).
+The app will attempt to play `/sounds/complete.wav` when a focus session completes.
+If the file doesn't exist, a fallback beep will be attempted.
 
 ## Recommended Sounds
 

@@ -9,6 +9,8 @@ export function TimerControls() {
   const isRunning = snapshot.state === 'RUNNING';
   const isPaused = snapshot.state === 'PAUSED';
   const isIdle = snapshot.state === 'IDLE';
+  const isFinished = snapshot.state === 'FINISHED';
+  const finishedLabel = snapshot.phase === 'FOCUS' ? 'Iniciar Foco' : 'Iniciar Pausa';
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -24,6 +26,18 @@ export function TimerControls() {
               aria-label="Iniciar timer"
             >
               Iniciar
+            </Button>
+          )}
+
+          {isFinished && (
+            <Button
+              onClick={start}
+              variant="royal"
+              size="lg"
+              icon={<Play size={24} />}
+              aria-label={finishedLabel}
+            >
+              {finishedLabel}
             </Button>
           )}
 

@@ -9,6 +9,8 @@ export function CommandPanel() {
   const isRunning = snapshot.state === 'RUNNING';
   const isPaused = snapshot.state === 'PAUSED';
   const isIdle = snapshot.state === 'IDLE';
+  const isFinished = snapshot.state === 'FINISHED';
+  const finishedLabel = snapshot.phase === 'FOCUS' ? 'Iniciar Foco' : 'Iniciar Pausa';
 
   return (
     <div className="flex flex-col h-full">
@@ -29,6 +31,18 @@ export function CommandPanel() {
             className="w-full justify-center"
           >
             Iniciar Sessão
+          </Button>
+        )}
+
+        {isFinished && (
+          <Button
+            onClick={start}
+            variant="royal"
+            icon={<Play size={18} />}
+            aria-label={finishedLabel}
+            className="w-full justify-center"
+          >
+            {finishedLabel}
           </Button>
         )}
 

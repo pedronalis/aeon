@@ -46,6 +46,11 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.start();
       set({ snapshot });
+      void ensureNotificationPermission();
+      void ensureWebNotificationPermission();
+      void ensureAudioContext();
+      void ensureNotificationPermission();
+      void ensureAudioContext();
 
       // Iniciar interval de 1 segundo
       if (tickIntervalId) clearInterval(tickIntervalId);
@@ -69,6 +74,11 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.resume();
       set({ snapshot });
+      void ensureNotificationPermission();
+      void ensureWebNotificationPermission();
+      void ensureAudioContext();
+      void ensureNotificationPermission();
+      void ensureAudioContext();
 
       // Reiniciar interval
       if (tickIntervalId) clearInterval(tickIntervalId);
@@ -149,6 +159,8 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
   // Se completou um FOCUS, salvar no backend
   if (snapshot.phase === 'SHORT_BREAK' || snapshot.phase === 'LONG_BREAK') {
     // Significa que acabou de completar um FOCUS (agora está no break)
+    let xpGained = 0;
+    let currentStreak = 0;
     try {
       const db = await Database.load('sqlite:pomodore.db');
       const date = formatDate(new Date());
@@ -176,10 +188,10 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
       const progressRows = await db.select<Array<{ current_streak: number }>>(
         'SELECT current_streak FROM user_progress WHERE id = 1'
       );
-      const currentStreak = progressRows.length > 0 ? progressRows[0].current_streak : 0;
+      currentStreak = progressRows.length > 0 ? progressRows[0].current_streak : 0;
 
       // 3. Calcular XP dinâmico
-      const xpGained = ScoreEngine.calculateXpForFocus(snapshot.mode, currentStreak);
+      xpGained = ScoreEngine.calculateXpForFocus(snapshot.mode, currentStreak);
 
       // 4. Atualizar XP total e última atividade
       await db.execute(
@@ -231,41 +243,137 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
         await tasksStore.linkPomodoro(tasksStore.activeTaskId);
       }
 
-      // 9. Notificação com XP dinâmico
-      const permissionGranted = await isPermissionGranted();
-      if (!permissionGranted) {
-        await requestPermission();
-      }
-
-      const settingsState = useSettingsStore.getState();
-      if (settingsState.settings.notificationsEnabled) {
-        const streakBonus = currentStreak >= 3 ? ` (Bônus streak ${currentStreak}d!)` : '';
-        await sendNotification({
-          title: 'Foco Completado!',
-          body: `+${xpGained} XP${streakBonus}`,
-        });
-      }
-
-      // 10. Som (se habilitado)
-      if (settingsState.settings.soundEnabled) {
-        playCompletionSound();
-      }
     } catch (error) {
       console.error('Error saving focus:', error);
     }
+
+    await notifyFocusCompletion(xpGained, currentStreak);
   }
 }
 
 /**
  * Toca som de conclusão
  */
-function playCompletionSound() {
+async function playCompletionSound() {
   try {
-    const audio = new Audio('/sounds/complete.mp3');
+    const audio = new Audio('/sounds/complete.wav');
     audio.volume = 0.5;
-    audio.play().catch((e) => console.error('Error playing sound:', e));
+    await audio.play();
   } catch (error) {
     console.error('Error playing sound:', error);
+    await playFallbackBeep();
+  }
+}
+
+async function playFallbackBeep() {
+  try {
+    const context = await ensureAudioContext();
+    if (!context) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gain.gain.value = 0.05;
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.25);
+  } catch (error) {
+    console.error('Error playing fallback beep:', error);
+  }
+}
+
+async function notifyFocusCompletion(xpGained: number, currentStreak: number) {
+  const settingsState = useSettingsStore.getState();
+  if (settingsState.settings.notificationsEnabled) {
+    const streakBonus = currentStreak >= 3 ? ` (Bônus streak ${currentStreak}d!)` : '';
+    const body = xpGained > 0 ? `+${xpGained} XP${streakBonus}` : 'Foco concluído.';
+    try {
+      await ensureNotificationPermission();
+
+      await sendNotification({
+        title: 'Foco completado!',
+        body,
+      });
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      await sendWebNotification({
+        title: 'Foco completado!',
+        body,
+      });
+    }
+  }
+
+  if (settingsState.settings.soundEnabled) {
+    await playCompletionSound();
+  }
+}
+
+let notificationPermissionRequested = false;
+
+async function ensureNotificationPermission() {
+  if (notificationPermissionRequested) return;
+  notificationPermissionRequested = true;
+  try {
+    const permissionGranted = await isPermissionGranted();
+    if (!permissionGranted) {
+      await requestPermission();
+    }
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+  }
+}
+
+let audioContext: AudioContext | null = null;
+
+async function ensureAudioContext(): Promise<AudioContext | null> {
+  try {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+    }
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    return audioContext;
+  } catch (error) {
+    console.error('Error initializing audio context:', error);
+    return null;
+  }
+}
+
+let webNotificationPermissionRequested = false;
+
+async function ensureWebNotificationPermission() {
+  if (webNotificationPermissionRequested) return;
+  webNotificationPermissionRequested = true;
+  if (typeof Notification === 'undefined') return;
+  try {
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  } catch (error) {
+    console.error('Error requesting web notification permission:', error);
+  }
+}
+
+async function sendWebNotification(payload: { title: string; body: string }) {
+  if (typeof Notification === 'undefined') return;
+  try {
+    if (Notification.permission === 'default') {
+      await ensureWebNotificationPermission();
+    }
+    if (Notification.permission !== 'granted') return;
+    new Notification(payload.title, { body: payload.body });
+  } catch (error) {
+    console.error('Error sending web notification:', error);
   }
 }
 
