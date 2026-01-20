@@ -1,0 +1,53 @@
+{
+  "name": "aeon",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "./scripts/tauri-dev.sh",
+    "tauri:dev:wayland": "GDK_BACKEND=wayland WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_FORCE_COMPOSITING_MODE=1 tauri dev",
+    "tauri:dev:wayland-nvidia": "GDK_BACKEND=wayland WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_FORCE_COMPOSITING_MODE=1 __GLX_VENDOR_LIBRARY_NAME=nvidia tauri dev",
+    "tauri:dev:wayland-intel": "GDK_BACKEND=wayland WEBKIT_DISABLE_DMABUF_RENDERER=0 LIBVA_DRIVER_NAME=iHD MESA_LOADER_DRIVER_OVERRIDE=iris tauri dev",
+    "tauri:dev:x11": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_FORCE_COMPOSITING_MODE=1 tauri dev",
+    "tauri:dev:x11-intel": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=0 LIBVA_DRIVER_NAME=iHD tauri dev",
+    "tauri:dev:software": "GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
+    "tauri:build": "tauri build",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.5.0",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-sql": "^2.3.1",
+    "lucide-react": "^0.562.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss7-compat": "^2.2.17",
+    "@tauri-apps/cli": "^2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/ui": "^4.0.17",
+    "autoprefixer": "^10.4.23",
+    "happy-dom": "^20.1.0",
+    "jsdom": "^27.4.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "3.4",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^4.0.17"
+  }
+}
