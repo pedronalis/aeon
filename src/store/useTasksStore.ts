@@ -621,8 +621,24 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         filtered = tasks;
     }
 
+    const sorted = [...filtered].sort((a, b) => a.sortOrder - b.sortOrder);
+
+    if (filter === 'all') {
+      const statusRank = (task: Task) => {
+        if (task.status === 'overdue') return 0;
+        if (task.status === 'pending') return 1;
+        return 2;
+      };
+
+      return [...sorted].sort((a, b) => {
+        const rankDiff = statusRank(a) - statusRank(b);
+        if (rankDiff !== 0) return rankDiff;
+        return a.sortOrder - b.sortOrder;
+      });
+    }
+
     // Ordenar por sortOrder (ordem manual do drag and drop)
-    return [...filtered].sort((a, b) => a.sortOrder - b.sortOrder);
+    return sorted;
   },
 
   linkPomodoro: async (taskId: string) => {
