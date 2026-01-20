@@ -1,34 +1,32 @@
 # Aeon ⏳
 
-> _Domine seu tempo, forge sua eternidade_
+> _Domine seu tempo, forje sua eternidade_
 
-Aplicativo desktop de timer Pomodoro minimalista e elegante. Múltiplas modalidades, sistema de gamificação completo e estética Tokyo Night Terminal Premium.
+Aeon é um aplicativo desktop de Pomodoro com foco em precisão, gamificação e um tema medieval premium. Ele roda offline, guarda seus dados localmente e oferece modos de foco customizáveis.
 
-## ✨ Features
+## ✨ Destaques
 
-- ⏱️ **Timer Anti-Drift Preciso** - Timer baseado em timestamps reais, sem drift
-- 🎨 **4 Modos Preset + Custom** - Tradicional, Foco Sustentável, Animedoro, Mangadoro
-- 🏆 **Sistema de Gamificação Completo** - XP dinâmico, níveis, 15 achievements e streaks
-- 🎯 **Quests Diárias e Semanais** - 3 daily + 2 weekly quests com XP bônus
-- 📊 **Estatísticas Detalhadas** - Histórico completo, agregações por período/modo
-- 🔔 **Notificações Nativas** - Alertas ao completar fases e quests
-- 🌙 **Tema Tokyo Night** - Estética cozy terminal premium
-- ⌨️ **Atalhos de Teclado** - Space, R, S
-- ♿ **Acessível** - WCAG AAA
-- 💾 **Persistência SQLite** - Database local com migrations
-- 📤 **Export CSV** - Exporte seus dados
+- ⏱️ **Timer anti-drift** baseado em timestamps reais
+- 🎨 **Modos preset + custom** (Tradicional, Foco Sustentável, Animedoro, Mangadoro)
+- 🏆 **Gamificação completa**: XP dinâmico, níveis, streaks e 20 conquistas
+- 🧾 **Pergaminhos (tarefas)** com etapas, prazos e recompensas
+- 🎯 **Missões diárias e semanais** com bônus de XP
+- 📊 **Estatísticas detalhadas** + export CSV
+- 🔔 **Notificações nativas** e atalhos de teclado
+- 💾 **SQLite com migrations** (dados locais)
 
 ## 🚀 Stack
 
-- Frontend: React 18 + TypeScript + Vite + Zustand + TailwindCSS
-- Backend: Tauri 2 + Rust + SQLite
+- Frontend: React 19 + TypeScript + Vite + Zustand + TailwindCSS
+- Backend: Tauri 2 + Rust
+- Persistência: SQLite (tauri-plugin-sql)
 - Testes: Vitest + Testing Library
 
 ## 📦 Requisitos
 
 - Node.js 20+
 - Rust 1.75+ (https://rustup.rs)
-- Dependências Linux: `webkit2gtk`, `libappindicator`, `librsvg2`
+- Linux: `webkit2gtk`, `libappindicator`, `librsvg2`
 
 ## 🛠️ Desenvolvimento
 
@@ -36,23 +34,56 @@ Aplicativo desktop de timer Pomodoro minimalista e elegante. Múltiplas modalida
 # Instalar dependências
 npm install
 
-# Importante: Carregar ambiente Rust (primeira vez apenas)
+# Carregar ambiente Rust (primeira vez)
 source $HOME/.cargo/env
 
-# Rodar em dev (auto-detecta GPU/sessao e aplica defaults seguros)
+# Rodar em dev (auto-detecta GPU/sessão e aplica defaults seguros)
 npm run tauri:dev
 
 # Rodar testes
 npm test
 ```
 
-**Nota**: O comando `tauri:dev` inicia automaticamente:
-- Frontend Vite dev server em http://localhost:1420/
+**O comando `tauri:dev` inicia automaticamente:**
+- Frontend Vite dev server em `http://localhost:1420/`
 - Backend Rust com hot reload
-- Database SQLite (criado automaticamente em `~/.local/share/com.aeon.app/aeon.db` no Linux)
+- Database SQLite local
 
-**Wayland + NVIDIA**: por padrao o DMABUF fica desabilitado para evitar crash do WebKitGTK.
-Para testar DMABUF, rode com `AEON_WAYLAND_DMABUF=1 npm run tauri:dev`.
+### Wayland + NVIDIA
+
+Por padrão o DMABUF fica desabilitado para evitar crash do WebKitGTK. Para testar:
+
+```bash
+AEON_WAYLAND_DMABUF=1 npm run tauri:dev
+```
+
+### Modo de Performance
+
+Em ambientes lentos, ative **Modo de Performance** nas configurações. Ele reduz animações e sombras pesadas. Para forçar no dev:
+
+```bash
+VITE_AEON_LOW_FX=1 npm run tauri:dev
+```
+
+### Diagnóstico de ambiente
+
+```bash
+./scripts/detect-env.sh
+```
+
+## 💾 Banco de dados
+
+- Linux: `~/.local/share/com.pedro.aeon/pomodore.db`
+- Migrations em `src-tauri/src/db.rs`
+
+## 🧪 Testes
+
+```bash
+npm test
+npm run test:watch
+npm run test:ui
+npm run test:coverage
+```
 
 ## 📦 Build
 
@@ -60,26 +91,18 @@ Para testar DMABUF, rode com `AEON_WAYLAND_DMABUF=1 npm run tauri:dev`.
 npm run tauri:build
 ```
 
-Instaladores gerados em: `src-tauri/target/release/bundle/`
+Instaladores em `src-tauri/target/release/bundle/`.
 
-## 📚 Documentação
+## 🗂️ Estrutura do repo
 
-- **[Sistema de Quests](docs/QUEST_SYSTEM.md)** - Guia completo sobre quests diárias e semanais
-- **Arquitetura** - Domain-driven design com camadas separadas
-- **Testing** - 29 testes unitários no TimerEngine
+- `src/` UI + estado + domínio
+- `src-tauri/` backend Rust + migrations
+- `scripts/` utilitários (detect-env, launcher dev)
 
-## 🎮 Como Usar
+## 🤝 Contribuindo
 
-1. Selecione um modo
-2. Pressione Space para iniciar
-3. Foque no trabalho
-4. Faça pausas quando sugerido
+Leia `CONTRIBUTING.md` para setup, padrões e fluxo de trabalho.
 
-**Atalhos:**
-- `Space` - Iniciar/Pausar
-- `R` - Reset
-- `S` - Pular
+## 📄 Licença
 
-## Licença
-
-MIT
+MIT - veja `LICENSE`.
