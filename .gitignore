@@ -13,6 +13,10 @@ dist-ssr
 *.local
 src-tauri/target
 .claude/
+coverage
+.env
+.env.*
+.direnv/
 
 # Editor directories and files
 .vscode/*
