@@ -14,6 +14,7 @@ import {
 import { TaskEngine } from '@/domain/tasks/TaskEngine';
 import { formatDate } from '@/domain/utils/dateUtils';
 import { useStatsStore } from './useStatsStore';
+import { useNotificationsStore } from './useNotificationsStore';
 
 interface TasksStore {
   tasks: Task[];
@@ -145,8 +146,8 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
       // Inserir no banco
       await db.execute(
-        `INSERT INTO tasks (id, title, description, effort, status, xp_reward, xp_penalty, xp_earned, deadline, created_at, linked_pomodoros, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        `INSERT INTO tasks (id, title, description, effort, status, xp_reward, xp_penalty, xp_earned, penalty_applied, deadline, created_at, linked_pomodoros, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           task.id,
           task.title,
@@ -156,6 +157,7 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
           task.xpReward,
           task.xpPenalty,
           task.xpEarned,
+          task.penaltyApplied ? 1 : 0,
           task.deadline ?? null,
           task.createdAt,
           task.linkedPomodoros,
@@ -587,7 +589,28 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   },
 
   setActiveTask: (taskId: string | null) => {
+    const { activeTaskId, tasks } = get();
+    if (activeTaskId === taskId) return;
     set({ activeTaskId: taskId });
+
+    const notifications = useNotificationsStore.getState();
+    if (taskId) {
+      const task = tasks.find((t) => t.id === taskId);
+      notifications.pushToast({
+        kind: 'timer',
+        title: activeTaskId ? 'Pergaminho trocado' : 'Pergaminho vinculado',
+        description: task?.title ?? undefined,
+        icon: '📜',
+      });
+    } else if (activeTaskId) {
+      const previous = tasks.find((t) => t.id === activeTaskId);
+      notifications.pushToast({
+        kind: 'timer',
+        title: 'Pergaminho desvinculado',
+        description: previous?.title ?? 'Sem pergaminho ativo',
+        icon: '🕯️',
+      });
+    }
   },
 
   getTaskWithSubtasks: (taskId: string) => {
@@ -659,8 +682,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
   applyOverduePenalties: async () => {
     try {
-      const { db, tasks } = get();
-      if (!db) return 0;
+      let { db, tasks } = get();
+      if (!db) {
+        await get().initDb();
+        db = get().db;
+        if (!db) return 0;
+      }
 
       const overdueTasks = TaskEngine.getTasksForPenalty(tasks);
       let totalPenalty = 0;
@@ -668,8 +695,8 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       for (const task of overdueTasks) {
         // Marcar como overdue
         await db.execute(
-          'UPDATE tasks SET status = $1 WHERE id = $2',
-          ['overdue', task.id]
+          'UPDATE tasks SET status = $1, penalty_applied = 1 WHERE id = $2',
+          ['overdue', task.id],
         );
 
         // Aplicar penalidade de XP (não deixar negativo)
@@ -683,7 +710,14 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       }
 
       if (totalPenalty > 0) {
-        await get().loadTasks();
+        await get().loadTasks({ silent: true });
+        await useStatsStore.getState().loadStats();
+        useNotificationsStore.getState().pushToast({
+          kind: 'xp',
+          title: 'Penalidade aplicada',
+          description: `${overdueTasks.length} pergaminho(s) vencido(s) • -${totalPenalty} XP`,
+          icon: '⚖️',
+        });
       }
 
       return totalPenalty;
@@ -770,6 +804,18 @@ async function checkTaskAchievements(
     console.log('[TasksStore] Achievement unlocked: first_task');
   }
 
+  // Achievement: task_total_25 - 25 tarefas completas
+  if (!achievements.includes('task_total_25') && totalCompleted >= 25) {
+    await statsStore.unlockAchievement('task_total_25', 'tasks', 40);
+    console.log('[TasksStore] Achievement unlocked: task_total_25');
+  }
+
+  // Achievement: task_total_100 - 100 tarefas completas
+  if (!achievements.includes('task_total_100') && totalCompleted >= 100) {
+    await statsStore.unlockAchievement('task_total_100', 'tasks', 120);
+    console.log('[TasksStore] Achievement unlocked: task_total_100');
+  }
+
   // Achievement: task_streak_5 - 5 tarefas sem atraso
   // Contar tarefas com deadline que foram completadas no prazo
   const tasksWithDeadline = completedTasks.filter((t) => t.deadline && t.completed_at);
@@ -781,6 +827,11 @@ async function checkTaskAchievements(
   if (!achievements.includes('task_streak_5') && onTimeTasks.length >= 5) {
     await statsStore.unlockAchievement('task_streak_5', 'tasks', 30);
     console.log('[TasksStore] Achievement unlocked: task_streak_5');
+  }
+
+  if (!achievements.includes('task_streak_10') && onTimeTasks.length >= 10) {
+    await statsStore.unlockAchievement('task_streak_10', 'tasks', 60);
+    console.log('[TasksStore] Achievement unlocked: task_streak_10');
   }
 
   // Achievement: task_early - 3 tarefas antes do prazo
@@ -809,6 +860,12 @@ async function checkTaskAchievements(
   if (!achievements.includes('task_linked') && completedTask.linkedPomodoros >= 10) {
     await statsStore.unlockAchievement('task_linked', 'tasks', 25);
     console.log('[TasksStore] Achievement unlocked: task_linked');
+  }
+
+  // Achievement: task_linked_25 - 25 pomodoros em uma única tarefa
+  if (!achievements.includes('task_linked_25') && completedTask.linkedPomodoros >= 25) {
+    await statsStore.unlockAchievement('task_linked_25', 'tasks', 60);
+    console.log('[TasksStore] Achievement unlocked: task_linked_25');
   }
 
   // Reload stats to update XP bar

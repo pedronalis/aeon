@@ -74,13 +74,13 @@ export function Select({ value, options, onChange, disabled = false, placeholder
           ${isOpen ? 'border-primary/50 bg-surface/80' : ''}
         `}
       >
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {selectedOption?.icon && (
             <div className="flex-shrink-0" style={{ color: selectedOption.color }}>
               {selectedOption.icon}
             </div>
           )}
-          <span className="font-medium text-left truncate">
+          <span className="font-medium text-left whitespace-nowrap">
             {selectedOption?.label || placeholder}
           </span>
         </div>
@@ -100,7 +100,7 @@ export function Select({ value, options, onChange, disabled = false, placeholder
             bg-surface border border-border/50 shadow-lg
             overflow-hidden rounded-lg
             animate-fade-in
-            min-w-full w-max
+            w-full
           "
         >
           <div className="max-h-72 overflow-y-auto py-1">

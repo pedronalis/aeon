@@ -12,13 +12,15 @@ import {
   AlertTriangle,
   GripVertical,
   X,
+  Shield,
 } from 'lucide-react';
 import type { Task, Subtask } from '@/domain/tasks/Task';
 import { TaskEngine } from '@/domain/tasks/TaskEngine';
-import { EFFORT_CONFIG } from '@/domain/tasks/Task';
+import { EFFORT_CONFIG, EFFORT_ORDER } from '@/domain/tasks/Task';
 import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
+import { DatePicker } from '@/components/shared/DatePicker';
 
 interface TaskCardProps {
   task: Task;
@@ -42,6 +44,12 @@ interface TaskCardProps {
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
 }
+
+const EDIT_STEPS = [
+  { id: 'details', label: 'Essência', hint: 'Título e descrição' },
+  { id: 'effort', label: 'Dificuldade', hint: 'Risco e recompensa' },
+  { id: 'deadline', label: 'Prazo', hint: 'Com juramento' },
+] as const;
 
 export function TaskCard({
   task,
@@ -74,6 +82,8 @@ export function TaskCard({
   const [draftTitle, setDraftTitle] = useState(task.title);
   const [draftDescription, setDraftDescription] = useState(task.description ?? '');
   const [draftEffort, setDraftEffort] = useState(task.effort);
+  const [draftDeadline, setDraftDeadline] = useState(task.deadline ?? '');
+  const [editStep, setEditStep] = useState(0);
 
   const isCompleted = task.status === 'completed';
   const isOverdue = task.status === 'overdue';
@@ -83,25 +93,31 @@ export function TaskCard({
   const canAddSubtask = !isCompleted && subtasks.length < maxSubtasks;
   const showSubtaskEditor = expanded || subtasks.length === 0;
 
-  const effortOptions = [
-    { value: 'trivial', label: 'Trivial', icon: '📜', xp: 5 },
-    { value: 'common', label: 'Comum', icon: '⚔️', xp: 15 },
-    { value: 'epic', label: 'Épico', icon: '👑', xp: 30 },
-    { value: 'legendary', label: 'Lendário', icon: '🏆', xp: 50 },
-  ] as const;
+  const effortOptions = EFFORT_ORDER.map((value) => {
+    const config = EFFORT_CONFIG[value];
+    return {
+      value,
+      label: config.label,
+      icon: config.icon,
+      xp: config.xpReward,
+      penalty: config.xpPenalty,
+    };
+  });
 
   useEffect(() => {
     if (!isEditingTask) {
       setDraftTitle(task.title);
       setDraftDescription(task.description ?? '');
       setDraftEffort(task.effort);
+      setDraftDeadline(task.deadline ?? '');
+      setEditStep(0);
     }
   }, [task, isEditingTask]);
 
   const borderClass = isCompleted
     ? 'forge-border-success'
     : isOverdue
-      ? 'forge-border-danger'
+    ? 'forge-border-error'
       : isActive
         ? 'forge-border-accent ring-2 ring-accent/30'
         : 'forge-border-primary';
@@ -195,6 +211,8 @@ export function TaskCard({
     setDraftTitle(task.title);
     setDraftDescription(task.description ?? '');
     setDraftEffort(task.effort);
+    setDraftDeadline(task.deadline ?? '');
+    setEditStep(0);
   };
 
   const handleCancelTaskEdit = () => {
@@ -202,6 +220,8 @@ export function TaskCard({
     setDraftTitle(task.title);
     setDraftDescription(task.description ?? '');
     setDraftEffort(task.effort);
+    setDraftDeadline(task.deadline ?? '');
+    setEditStep(0);
   };
 
   const handleSaveTaskEdit = async () => {
@@ -212,6 +232,7 @@ export function TaskCard({
       title: trimmedTitle,
       description: trimmedDescription,
       effort: draftEffort,
+      deadline: draftDeadline ? draftDeadline : null,
     });
     setIsEditingTask(false);
   };
@@ -253,13 +274,18 @@ export function TaskCard({
         transition-all duration-fast
         ${isDragging ? 'opacity-50' : ''}
         ${isDragOver ? 'transform translate-y-1' : ''}
+        ${isActive ? 'animate-glow-breathe' : ''}
       `}
     >
       <Card
         variant="parchment"
+        hoverable
+        borderGlow
         className={`
           ${borderClass}
           ${isDragOver ? 'ring-2 ring-primary' : ''}
+          ${isCompleted ? 'opacity-95' : ''}
+          ${isActive ? 'shadow-torch-accent' : ''}
         `}
       >
         <div className="flex items-start gap-3">
@@ -277,7 +303,7 @@ export function TaskCard({
               ${isCompleted
                 ? 'parchment-success'
                 : isOverdue
-                  ? 'parchment-danger'
+                  ? 'parchment-error'
                   : 'parchment-primary'
               }
             `}
@@ -299,7 +325,7 @@ export function TaskCard({
               </h3>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {isOverdue && (
-                  <span className="text-xs font-semibold text-danger uppercase tracking-wider flex items-center gap-1 animate-pulse font-heading">
+                  <span className="text-xs font-semibold text-error uppercase tracking-wider flex items-center gap-1 animate-pulse font-heading">
                     <AlertTriangle size={12} />
                     Vencida
                   </span>
@@ -324,7 +350,7 @@ export function TaskCard({
               {/* XP */}
               <span
                 className={`font-semibold font-heading ${
-                  isOverdue ? 'text-danger' : 'text-primary'
+                  isOverdue ? 'text-error' : 'text-primary'
                 }`}
               >
                 {isOverdue ? `-${task.xpPenalty}` : `+${task.xpReward}`} XP
@@ -353,66 +379,173 @@ export function TaskCard({
             </div>
 
             {isEditingTask && (
-              <div className="mt-3 space-y-3">
-                <Input
-                  label="Título do Pergaminho"
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  placeholder="Digite o nome do pergaminho"
-                />
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-heading font-medium text-text">
-                    Descrição (opcional)
-                  </label>
-                  <textarea
-                    value={draftDescription}
-                    onChange={(e) => setDraftDescription(e.target.value)}
-                    rows={2}
-                    placeholder="Detalhes adicionais sobre a tarefa..."
-                    className="
-                      w-full px-4 py-3 rounded-lg font-body
-                      parchment-ultra text-text
-                      border-2 border-border transition-all duration-normal
-                      placeholder:text-text-muted
-                      focus:outline-none focus:border-primary
-                      resize-none
-                    "
-                  />
+              <div className="mt-4 space-y-4 rounded-xl border border-primary/15 parchment-panel p-4 pb-6 shadow-torch-sm">
+                <div className="parchment-panel rounded-lg border border-primary/10 p-3">
+                  <div className="flex items-center justify-between text-[11px] font-heading text-text-muted mb-2">
+                    <span className="uppercase tracking-[0.2em]">Edição guiada</span>
+                    <span>Etapa {editStep + 1} de {EDIT_STEPS.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {EDIT_STEPS.map((stepItem, index) => {
+                      const isActive = editStep === index;
+                      const isCompleted = editStep > index;
+                      const canJump = index <= editStep || draftTitle.trim().length > 0;
+                      return (
+                        <button
+                          key={stepItem.id}
+                          type="button"
+                          onClick={() => {
+                            if (!canJump) return;
+                            setEditStep(index);
+                          }}
+                          className={`
+                            text-left rounded-lg p-2.5 transition-all duration-fast
+                            ${isActive
+                              ? 'parchment-primary forge-border-primary shadow-torch-sm'
+                              : isCompleted
+                                ? 'parchment-panel border border-primary/20 hover:parchment-ultra'
+                                : 'parchment-panel border border-border/50 hover:parchment-ultra'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-heading text-text-muted uppercase tracking-[0.2em]">
+                              Etapa {index + 1}
+                            </span>
+                            {isCompleted && <Check size={12} className="text-success" />}
+                          </div>
+                          <div className="text-sm font-heading text-text mt-1">{stepItem.label}</div>
+                          <div className="text-[10px] text-text-muted font-body mt-0.5">
+                            {stepItem.hint}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-heading font-medium text-text">
-                    Nível de Esforço
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {effortOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setDraftEffort(option.value)}
-                        className={`
-                          flex flex-col items-center gap-1 p-3 rounded-lg
-                          transition-all duration-fast
-                          ${draftEffort === option.value
-                            ? 'parchment-primary forge-border-primary'
-                            : 'parchment-panel hover:parchment-ultra border-2 border-transparent'
-                          }
-                        `}
-                      >
-                        <span className="text-xl">{option.icon}</span>
-                        <span className="text-xs font-heading">{option.label}</span>
-                        <span className="text-xs text-primary font-semibold">+{option.xp} XP</span>
-                      </button>
-                    ))}
+                {editStep === 0 && (
+                  <div className="space-y-4">
+                    <Input
+                      label="Título do Pergaminho"
+                      value={draftTitle}
+                      onChange={(e) => setDraftTitle(e.target.value)}
+                      placeholder="Digite o nome do pergaminho"
+                    />
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-heading font-medium text-text">
+                        Descrição (opcional)
+                      </label>
+                      <textarea
+                        value={draftDescription}
+                        onChange={(e) => setDraftDescription(e.target.value)}
+                        rows={2}
+                        placeholder="Detalhes adicionais sobre a tarefa..."
+                        className="
+                          w-full px-4 py-3 rounded-lg font-body
+                          parchment-ultra text-text
+                          border-2 border-border transition-all duration-normal
+                          placeholder:text-text-muted
+                          focus:outline-none focus:border-primary
+                          resize-none
+                        "
+                      />
+                    </div>
                   </div>
+                )}
+
+                {editStep === 1 && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-heading font-medium text-text">
+                      Nível de Esforço
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {effortOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setDraftEffort(option.value)}
+                          className={`
+                            flex flex-col items-center gap-1.5 p-4 rounded-xl
+                            transition-all duration-fast
+                            ${draftEffort === option.value
+                              ? 'parchment-primary forge-border-primary shadow-torch-sm'
+                              : 'parchment-panel border border-border/60 hover:parchment-ultra hover:border-primary/30'
+                            }
+                          `}
+                        >
+                          <span className="text-2xl">{option.icon}</span>
+                          <span className="text-sm font-heading">{option.label}</span>
+                          <div className="mt-1.5 flex items-center gap-2 text-[11px] font-heading">
+                            <span className="text-primary">+{option.xp} XP</span>
+                            <span className="text-text-muted/50">|</span>
+                            <span className="text-error">-{option.penalty} XP</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {editStep === 2 && (
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <DatePicker
+                        value={draftDeadline}
+                        onChange={setDraftDeadline}
+                        label="Prazo (opcional)"
+                        placeholder="Selecione o prazo..."
+                      />
+                      {draftDeadline && (
+                        <p className="text-xs text-text-muted font-body mt-1.5">
+                          Penalidade se atrasar: -{config.xpPenalty} XP
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="parchment-ultra rounded-lg border border-primary/20 p-3 flex items-start gap-3">
+                      <div className="p-2 rounded-md parchment-primary forge-border-primary shadow-torch-sm">
+                        <Shield size={14} className="text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-heading uppercase tracking-[0.28em] text-primary">
+                          Juramento de Honra
+                        </p>
+                        <p className="text-xs text-text-secondary font-body mt-1 leading-relaxed">
+                          Ao mover o prazo, tua palavra ecoa nos salões da Ordem. Ajuste apenas quando o destino exigir.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="parchment"
+                    size="sm"
+                    onClick={() => setEditStep((current) => Math.max(0, current - 1))}
+                    disabled={editStep === 0}
+                  >
+                    Voltar
+                  </Button>
+                  {editStep < EDIT_STEPS.length - 1 && (
+                    <Button
+                      variant="parchment"
+                      size="sm"
+                      onClick={() => setEditStep((current) => Math.min(current + 1, EDIT_STEPS.length - 1))}
+                      disabled={editStep === 0 && draftTitle.trim().length === 0}
+                    >
+                      Avançar
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Subtasks Progress Bar */}
             {subtasks.length > 0 && (
-              <div className="space-y-1 mb-3">
+              <div className="pt-4 space-y-1 mb-3">
                 <div className="flex items-center justify-between text-xs font-body">
                   <span className={isCompleted ? 'text-success' : 'text-text-secondary'}>
                     {progress.completed}/{progress.total} etapas
@@ -436,7 +569,7 @@ export function TaskCard({
 
             {/* Expandable Subtasks */}
             {subtasks.length > 0 && (
-              <div>
+              <div className="pt-3">
                 <button
                   onClick={() => setExpanded(!expanded)}
                   className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors font-heading"
@@ -541,7 +674,7 @@ export function TaskCard({
                                 {subtask.title}
                               </span>
 
-                              <span className="text-xs text-primary font-heading opacity-70">
+                              <span className="text-[10px] text-text-muted font-heading uppercase tracking-[0.2em] opacity-70 group-hover:text-primary/80 transition-colors">
                                 +{subtask.xpReward} XP
                               </span>
 
@@ -558,7 +691,7 @@ export function TaskCard({
                                   <button
                                     onClick={() => onDeleteSubtask?.(subtask.id)}
                                     type="button"
-                                    className="p-1 rounded text-text-muted hover:text-danger transition-colors"
+                                    className="p-1 rounded text-text-muted hover:text-error transition-colors"
                                     aria-label="Excluir subtarefa"
                                   >
                                     <X size={12} />
@@ -626,6 +759,7 @@ export function TaskCard({
                   variant="royal"
                   size="sm"
                   icon={<Check size={14} />}
+                  className="hover:animate-button-press"
                 >
                   Concluir
                 </Button>
@@ -636,9 +770,17 @@ export function TaskCard({
                     variant="parchment"
                     size="sm"
                     icon={<Play size={14} />}
+                    className="hover:animate-button-press"
                   >
                     Vincular
                   </Button>
+                )}
+
+                {isActive && (
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-full border border-accent/30 text-accent text-xs font-heading animate-scale-in">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                    Ativo
+                  </div>
                 )}
 
                 <div className="flex-1" />

@@ -15,7 +15,7 @@ interface TaskFiltersProps {
 const FILTERS: { value: TaskFilter; label: string; icon: typeof List }[] = [
   { value: 'all', label: 'Todos', icon: List },
   { value: 'pending', label: 'Pendentes', icon: Clock },
-  { value: 'completed', label: 'Concluidos', icon: CheckCircle },
+  { value: 'completed', label: 'Concluídos', icon: CheckCircle },
   { value: 'overdue', label: 'Atrasados', icon: AlertTriangle },
 ];
 

@@ -1,6 +1,6 @@
 /**
  * Sistema de Achievements do Pomodore
- * 20 conquistas divididas em categorias
+ * 30 conquistas divididas em categorias
  */
 
 export interface Achievement {
@@ -55,6 +55,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '⭐',
   },
   {
+    id: 'streak_14',
+    name: 'Vigilante da Chama',
+    description: 'Mantenha a Chama acesa por 14 dias',
+    lore: 'Duas semanas de disciplina impecável. A chama reconhece seu zelo constante.',
+    category: 'consistency',
+    xp: 80,
+    icon: '🛡️',
+  },
+  {
     id: 'streak_30',
     name: 'Guardião da Chama Eterna',
     description: 'Mantenha a Chama acesa por 30 dias',
@@ -63,6 +72,16 @@ export const ACHIEVEMENTS: Achievement[] = [
     xp: 200,
     icon: '🔥',
     unlocksTitle: 'Guardião da Chama',
+  },
+  {
+    id: 'streak_60',
+    name: 'Juramento Inquebrável',
+    description: 'Mantenha a Chama acesa por 60 dias',
+    lore: 'Sessenta dias sem vacilo. Sua promessa é inquebrável e ecoa como lenda.',
+    category: 'consistency',
+    xp: 300,
+    icon: '🏅',
+    unlocksTitle: 'Inquebrável',
   },
 
   // Quantidades
@@ -85,6 +104,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '🛡️',
   },
   {
+    id: 'total_250',
+    name: 'Campeão da Ordem',
+    description: 'Complete 250 Rituais no total',
+    lore: 'Duzentos e cinquenta rituais. Sua dedicação transforma disciplina em legado.',
+    category: 'quantity',
+    xp: 150,
+    icon: '🏆',
+  },
+  {
     id: 'total_500',
     name: 'Lenda Viva',
     description: 'Complete 500 Rituais no total',
@@ -93,6 +121,16 @@ export const ACHIEVEMENTS: Achievement[] = [
     xp: 250,
     icon: '👑',
     unlocksTitle: 'Lenda Viva',
+  },
+  {
+    id: 'total_1000',
+    name: 'Mito da Chama',
+    description: 'Complete 1000 Rituais no total',
+    lore: 'Mil rituais. Você já não é apenas história — é mito vivo da Ordem.',
+    category: 'quantity',
+    xp: 500,
+    icon: '🌋',
+    unlocksTitle: 'Mito da Chama',
   },
 
   // Modos
@@ -114,6 +152,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     category: 'modes',
     xp: 20,
     icon: '🎨',
+  },
+  {
+    id: 'mode_loyalist',
+    name: 'Leal ao Estilo',
+    description: 'Complete 50 Rituais em um mesmo estilo',
+    lore: 'A repetição lapida a técnica. Sua fidelidade a um estilo elevou sua maestria.',
+    category: 'modes',
+    xp: 60,
+    icon: '🎯',
   },
 
   // Especiais
@@ -148,6 +195,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     unlocksTitle: 'Incansável',
   },
   {
+    id: 'daily_10',
+    name: 'Maratona de Foco',
+    description: 'Complete 10 Rituais em um dia',
+    lore: 'Um dia inteiro de devoção. Sua determinação acende a Chama com vigor raro.',
+    category: 'special',
+    xp: 60,
+    icon: '🧨',
+  },
+  {
     id: 'perfect_week',
     name: 'Mestre da Disciplina',
     description: 'Complete pelo menos 2 Rituais todos os dias da semana',
@@ -178,6 +234,25 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '📜',
   },
   {
+    id: 'task_total_25',
+    name: 'Arquivista',
+    description: 'Complete 25 tarefas',
+    lore: 'Vinte e cinco pergaminhos selados. Seus registros são dignos da biblioteca da Ordem.',
+    category: 'tasks',
+    xp: 40,
+    icon: '🗂️',
+  },
+  {
+    id: 'task_total_100',
+    name: 'Mestre dos Pergaminhos',
+    description: 'Complete 100 tarefas',
+    lore: 'Cem pergaminhos cumpridos. Sua obra é vasta e respeitada.',
+    category: 'tasks',
+    xp: 120,
+    icon: '📚',
+    unlocksTitle: 'Mestre dos Pergaminhos',
+  },
+  {
     id: 'task_streak_5',
     name: 'Escriba Dedicado',
     description: 'Complete 5 tarefas sem atraso',
@@ -186,6 +261,16 @@ export const ACHIEVEMENTS: Achievement[] = [
     xp: 30,
     icon: '✍️',
     unlocksTitle: 'Escriba',
+  },
+  {
+    id: 'task_streak_10',
+    name: 'Escriba Implacável',
+    description: 'Complete 10 tarefas sem atraso',
+    lore: 'Dez pergaminhos sem falhas. Sua pontualidade se tornou lenda.',
+    category: 'tasks',
+    xp: 60,
+    icon: '🪶',
+    unlocksTitle: 'Implacável',
   },
   {
     id: 'task_early',
@@ -198,22 +283,31 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'task_epic',
-    name: 'Cacador de Epicos',
-    description: 'Complete 10 tarefas epicas',
+    name: 'Caçador de Épicos',
+    description: 'Complete 10 tarefas épicas',
     lore: 'Dez pergaminhos épicos selados! Você é um verdadeiro caçador de desafios grandiosos.',
     category: 'tasks',
     xp: 50,
     icon: '👑',
-    unlocksTitle: 'Cacador de Epicos',
+    unlocksTitle: 'Caçador de Épicos',
   },
   {
     id: 'task_linked',
     name: 'Foco Direcionado',
-    description: 'Vincule 10 pomodoros a uma unica tarefa',
+    description: 'Vincule 10 pomodoros a uma única tarefa',
     lore: 'Dez rituais dedicados a um único pergaminho. Sua concentração é inabalável.',
     category: 'tasks',
     xp: 25,
     icon: '🎯',
+  },
+  {
+    id: 'task_linked_25',
+    name: 'Foco Consagrado',
+    description: 'Vincule 25 pomodoros a uma única tarefa',
+    lore: 'Vinte e cinco rituais em um único pergaminho. Sua devoção é absoluta.',
+    category: 'tasks',
+    xp: 60,
+    icon: '🏹',
   },
 ];
 

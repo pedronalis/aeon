@@ -4,7 +4,7 @@
  */
 
 /** Nível de esforço da tarefa */
-export type TaskEffort = 'trivial' | 'common' | 'epic' | 'legendary';
+export type TaskEffort = 'trivial' | 'common' | 'challenging' | 'heroic' | 'epic' | 'legendary';
 
 /** Status da tarefa */
 export type TaskStatus = 'pending' | 'completed' | 'overdue';
@@ -21,9 +21,20 @@ export interface EffortConfig {
 export const EFFORT_CONFIG: Record<TaskEffort, EffortConfig> = {
   trivial: { icon: '📜', xpReward: 5, xpPenalty: 2, label: 'Trivial' },
   common: { icon: '⚔️', xpReward: 15, xpPenalty: 5, label: 'Comum' },
-  epic: { icon: '👑', xpReward: 30, xpPenalty: 10, label: 'Épico' },
+  challenging: { icon: '🛡️', xpReward: 22, xpPenalty: 8, label: 'Desafiador' },
+  heroic: { icon: '🦁', xpReward: 30, xpPenalty: 12, label: 'Heroico' },
+  epic: { icon: '👑', xpReward: 40, xpPenalty: 16, label: 'Épico' },
   legendary: { icon: '🏆', xpReward: 50, xpPenalty: 20, label: 'Lendário' },
 };
+
+export const EFFORT_ORDER: TaskEffort[] = [
+  'trivial',
+  'common',
+  'challenging',
+  'heroic',
+  'epic',
+  'legendary',
+];
 
 /** Interface principal de Tarefa */
 export interface Task {
@@ -35,6 +46,7 @@ export interface Task {
   xpReward: number;      // XP base da tarefa
   xpPenalty: number;     // Penalidade se atrasar
   xpEarned: number;      // XP já ganho (subtarefas)
+  penaltyApplied: boolean;
   deadline?: string;     // YYYY-MM-DD ou undefined
   createdAt: string;
   completedAt?: string;
@@ -63,6 +75,7 @@ export interface TaskRow {
   xp_reward: number;
   xp_penalty: number;
   xp_earned: number;
+  penalty_applied?: number;
   deadline: string | null;
   created_at: string;
   completed_at: string | null;
@@ -92,6 +105,7 @@ export function taskFromRow(row: TaskRow): Task {
     xpReward: row.xp_reward,
     xpPenalty: row.xp_penalty,
     xpEarned: row.xp_earned,
+    penaltyApplied: row.penalty_applied === 1,
     deadline: row.deadline ?? undefined,
     createdAt: row.created_at,
     completedAt: row.completed_at ?? undefined,

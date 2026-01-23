@@ -10,7 +10,7 @@ interface DatePickerProps {
 }
 
 const MONTHS_PT = [
-  'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
@@ -171,7 +171,7 @@ export function DatePicker({ value, onChange, minDate, label, placeholder = 'Sel
             {value && (
               <button
                 onClick={clearDate}
-                className="p-1 text-text-muted hover:text-danger transition-colors"
+                className="p-1 text-text-muted hover:text-error transition-colors"
                 aria-label="Limpar data"
               >
                 <X size={14} />
@@ -328,7 +328,7 @@ export function DatePicker({ value, onChange, minDate, label, placeholder = 'Sel
               }}
               className="flex-1 px-3 py-1.5 text-xs font-heading rounded-lg parchment-panel hover:parchment-primary transition-colors whitespace-nowrap"
             >
-              Amanha
+              Amanhã
             </button>
             <button
               onClick={() => {

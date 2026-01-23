@@ -8,11 +8,26 @@
 
 set -e
 
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:${PATH}"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
+
+notify_error() {
+    local message="$1"
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send "Aeon" "$message"
+        return
+    fi
+    if command -v zenity >/dev/null 2>&1; then
+        zenity --error --title="Aeon" --text="$message"
+        return
+    fi
+    echo -e "${RED}${message}${NC}" >&2
+}
 
 echo -e "${BLUE}=== Aeon - Iniciando em X11 ===${NC}"
 
@@ -27,15 +42,14 @@ detect_gpu() {
     fi
 }
 
-GPU=$(detect_gpu)
+GPU="${AEON_FORCE_GPU:-$(detect_gpu)}"
 echo -e "${GREEN}GPU detectada:${NC} $GPU"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY="$SCRIPT_DIR/src-tauri/target/release/aeon"
 
 if [ ! -f "$BINARY" ]; then
-    echo -e "${RED}Erro: Binário não encontrado em $BINARY${NC}"
-    echo -e "${YELLOW}Execute 'npm run tauri:build' primeiro.${NC}"
+    notify_error "Binario nao encontrado em $BINARY. Execute 'npm run tauri:build' antes."
     exit 1
 fi
 
@@ -58,7 +72,10 @@ if [ "$GPU" = "nvidia" ]; then
     export WEBKIT_DISABLE_DMABUF_RENDERER=1
 
     # Verificar se compositing pode ser habilitado
-    NVIDIA_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d'.' -f1)
+    NVIDIA_VERSION=""
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        NVIDIA_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d'.' -f1)
+    fi
 
     if [ -n "$NVIDIA_VERSION" ] && [ "$NVIDIA_VERSION" -ge 470 ]; then
         echo -e "${GREEN}Driver NVIDIA $NVIDIA_VERSION - compositing habilitado${NC}"

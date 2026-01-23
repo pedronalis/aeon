@@ -7,9 +7,9 @@ export const PHASE_ICONS = {
 } as const;
 
 export const PHASE_LABELS = {
-  FOCUS: 'Ritual de Foco',
-  SHORT_BREAK: 'Descanso Breve',
-  LONG_BREAK: 'Descanso Longo',
+  FOCUS: 'Foco',
+  SHORT_BREAK: 'Descanso',
+  LONG_BREAK: 'Descanso',
 } as const;
 
 export type Phase = keyof typeof PHASE_ICONS;

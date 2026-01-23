@@ -5,11 +5,7 @@ import { TaskEngine } from '@/domain/tasks/TaskEngine';
 import { EFFORT_CONFIG } from '@/domain/tasks/Task';
 import { Button } from '@/components/shared/Button';
 import { TaskSelector } from '@/components/tasks/TaskSelector';
-
-interface XpToast {
-  id: number;
-  amount: number;
-}
+import { useNotificationsStore } from '@/store/useNotificationsStore';
 
 export function ActiveTaskPanel() {
   const {
@@ -23,7 +19,7 @@ export function ActiveTaskPanel() {
   } = useTasksStore();
 
   const [showSelector, setShowSelector] = useState(false);
-  const [xpToasts, setXpToasts] = useState<XpToast[]>([]);
+  const pushToast = useNotificationsStore((state) => state.pushToast);
 
   // Get active task with subtasks
   const activeTaskData = activeTaskId ? getTaskWithSubtasks(activeTaskId) : null;
@@ -32,19 +28,22 @@ export function ActiveTaskPanel() {
   const pendingTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'overdue');
 
   // Show XP toast when subtask is completed
-  const showXpGain = (amount: number) => {
-    const id = Date.now();
-    setXpToasts((prev) => [...prev, { id, amount }]);
-    setTimeout(() => {
-      setXpToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 1500);
+  const showXpGain = (amount: number, title: string, description?: string) => {
+    if (amount <= 0) return;
+    pushToast({
+      kind: 'xp',
+      title,
+      description,
+      xp: amount,
+      icon: '✨',
+    });
   };
 
   // Handle subtask toggle
   const handleToggleSubtask = async (subtaskId: string) => {
     const subtask = subtasks.find((s) => s.id === subtaskId);
     if (subtask && !subtask.completed) {
-      showXpGain(subtask.xpReward);
+      showXpGain(subtask.xpReward, 'Etapa selada', subtask.title);
     }
     await toggleSubtask(subtaskId);
   };
@@ -54,7 +53,7 @@ export function ActiveTaskPanel() {
     if (!activeTaskId) return;
     const xpGained = await completeTask(activeTaskId);
     if (xpGained > 0) {
-      showXpGain(xpGained);
+      showXpGain(xpGained, 'Pergaminho selado', activeTaskData?.title);
     }
   };
 
@@ -82,11 +81,13 @@ export function ActiveTaskPanel() {
         <div className="mb-6">
           <div className="flex items-center gap-2">
             <Scroll size={16} className="text-primary" />
-            <h2 className="text-base font-display text-primary mb-0.5">Pergaminho Ativo</h2>
+            <div>
+              <h2 className="text-base font-display text-primary mb-0.5">Pergaminho Ativo</h2>
+              <p className="text-text-muted text-xs font-body">
+                {showSelector ? 'Selecione outro pergaminho' : 'Vincule um pergaminho ao timer'}
+              </p>
+            </div>
           </div>
-          <p className="text-text-muted text-xs font-body">
-            {showSelector ? 'Selecione outro pergaminho' : 'Vincule um pergaminho ao timer'}
-          </p>
         </div>
 
         {/* Task Selector */}
@@ -95,14 +96,20 @@ export function ActiveTaskPanel() {
             <div className="text-center py-6">
               <Scroll size={32} className="mx-auto text-text-muted mb-2 opacity-50" />
               <p className="text-sm text-text-muted font-body">
-                Nenhum pergaminho pendente
+                Nenhum pergaminho aguardando ritual
               </p>
               <p className="text-xs text-text-muted/70 font-body mt-1">
-                Crie novos pergaminhos na aba Tarefas
+                Forje novos pergaminhos na aba Pergaminhos
               </p>
             </div>
           ) : (
             <>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted font-heading mb-2 text-center">
+                {pendingTasks.length} pergaminho{pendingTasks.length === 1 ? '' : 's'} prontos
+              </p>
+              <p className="text-xs text-text-muted font-body text-center mb-3">
+                Selecione um pergaminho para guiar o ritual.
+              </p>
               <TaskSelector
                 tasks={pendingTasks}
                 selectedTaskId={null}
@@ -135,28 +142,19 @@ export function ActiveTaskPanel() {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* XP Toasts */}
-      <div className="absolute top-0 right-0 z-10 pointer-events-none">
-        {xpToasts.map((toast) => (
-          <div
-            key={toast.id}
-            className="text-sm font-bold text-success animate-fade-in-up mb-1"
-          >
-            +{toast.amount} XP
-          </div>
-        ))}
-      </div>
-
       {/* Header */}
       <div className="mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scroll size={16} className="text-primary" />
-            <h2 className="text-base font-display text-primary">Pergaminho Ativo</h2>
+            <div>
+              <h2 className="text-base font-display text-primary">Pergaminho Ativo</h2>
+              <p className="text-text-muted text-xs font-body">Vinculado ao timer</p>
+            </div>
           </div>
           <button
             onClick={handleUnlinkTask}
-            className="p-1 text-text-muted hover:text-danger transition-colors"
+            className="p-1.5 rounded-lg border border-border/60 text-text-muted hover:text-error hover:border-error/40 transition-colors"
             aria-label="Desvincular pergaminho"
             title="Desvincular"
           >
@@ -172,7 +170,7 @@ export function ActiveTaskPanel() {
           <div
             className={`
               flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg
-              ${isOverdue ? 'parchment-danger' : 'parchment-primary'}
+              ${isOverdue ? 'parchment-error' : 'parchment-primary'}
             `}
           >
             {config.icon}
@@ -180,20 +178,31 @@ export function ActiveTaskPanel() {
 
           {/* Title and Meta */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-sm text-text truncate font-heading">
-              {activeTaskData.title}
-            </h3>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm text-text truncate font-heading">
+                  {activeTaskData.title}
+                </h3>
+                <p className="text-xs text-text-muted font-body mt-1">
+                  {config.label} · {activeTaskData.subtasks.length} etapa
+                  {activeTaskData.subtasks.length === 1 ? '' : 's'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p
+                  className={`text-sm font-heading ${
+                    isOverdue ? 'text-error' : 'text-primary'
+                  }`}
+                >
+                  {isOverdue ? `-${activeTaskData.xpPenalty}` : `+${activeTaskData.xpReward}`} XP
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted font-heading">
+                  {isOverdue ? 'Penalidade' : 'Recompensa'}
+                </p>
+              </div>
+            </div>
 
-            <div className="flex items-center gap-3 text-xs mt-1">
-              {/* XP */}
-              <span
-                className={`font-semibold font-heading ${
-                  isOverdue ? 'text-danger' : 'text-primary'
-                }`}
-              >
-                {isOverdue ? `-${activeTaskData.xpPenalty}` : `+${activeTaskData.xpReward}`} XP
-              </span>
-
+            <div className="flex flex-wrap items-center gap-3 text-xs mt-2">
               {/* Deadline */}
               {activeTaskData.deadline && (
                 <span
@@ -208,7 +217,14 @@ export function ActiveTaskPanel() {
               {activeTaskData.linkedPomodoros > 0 && (
                 <span className="flex items-center gap-1 text-text-muted">
                   <Clock size={10} />
-                  {activeTaskData.linkedPomodoros}
+                  {activeTaskData.linkedPomodoros} ritual
+                  {activeTaskData.linkedPomodoros === 1 ? '' : 'ais'}
+                </span>
+              )}
+
+              {activeTaskData.xpEarned > 0 && (
+                <span className="text-text-muted">
+                  XP selado: <span className="text-text">{activeTaskData.xpEarned}</span>
                 </span>
               )}
             </div>
@@ -219,14 +235,19 @@ export function ActiveTaskPanel() {
       {/* Subtasks Section */}
       {activeTaskData.subtasks.length > 0 && (
         <div className="flex-1 parchment-panel rounded-lg p-4 mb-4 overflow-hidden flex flex-col">
-          <p className="text-xs text-text-muted font-heading mb-2">Etapas</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-text-muted font-heading">Etapas</p>
+            <span className="text-[11px] text-text-muted font-body">
+              {progress.completed}/{progress.total} seladas
+            </span>
+          </div>
 
           {/* Subtasks List */}
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+          <div className="flex-1 overflow-y-auto divide-y divide-border/40 pr-1">
             {activeTaskData.subtasks.map((subtask) => (
               <div
                 key={subtask.id}
-                className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-surface-hover group"
+                className="flex items-center gap-3 py-2.5 px-2 rounded-md hover:bg-surface-hover transition-colors duration-200 group"
               >
                 <button
                   onClick={() => handleToggleSubtask(subtask.id)}
@@ -255,7 +276,7 @@ export function ActiveTaskPanel() {
                   {subtask.title}
                 </span>
 
-                <span className="text-xs text-primary font-heading opacity-70">
+                <span className="text-[10px] text-text-muted font-heading uppercase tracking-[0.2em] group-hover:text-primary/80 transition-colors">
                   +{subtask.xpReward} XP
                 </span>
               </div>
@@ -283,9 +304,12 @@ export function ActiveTaskPanel() {
       {/* No subtasks message */}
       {activeTaskData.subtasks.length === 0 && (
         <div className="flex-1 parchment-panel rounded-lg p-4 mb-4 flex items-center justify-center">
-          <p className="text-sm text-text-muted font-body text-center">
-            Este pergaminho<br />n&atilde;o possui etapas
-          </p>
+          <div className="text-center">
+            <Scroll size={26} className="mx-auto text-text-muted mb-2 opacity-60" />
+            <p className="text-sm text-text-muted font-body">
+              Este pergaminho não possui etapas
+            </p>
+          </div>
         </div>
       )}
 
@@ -303,9 +327,9 @@ export function ActiveTaskPanel() {
         <Button
           onClick={handleChangeTask}
           variant="parchment"
-          icon={<RefreshCw size={14} />}
-          size="sm"
-          className="w-full justify-center"
+          icon={<RefreshCw size={16} />}
+          size="md"
+          className="w-full justify-center text-text-secondary border-primary/20 hover:border-primary/40 hover:text-primary/90"
         >
           Trocar Pergaminho
         </Button>

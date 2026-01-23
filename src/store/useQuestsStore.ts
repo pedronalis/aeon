@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
 import { QuestEngine, type DailyQuest, type WeeklyQuest } from '@/domain/quests/QuestEngine';
 import { formatDate } from '@/domain/utils/dateUtils';
+import { useNotificationsStore } from './useNotificationsStore';
 
 interface DailyQuestRow {
   id: string;
@@ -38,6 +39,16 @@ interface QuestsStore {
   resetDailyQuests: () => Promise<void>;
   resetWeeklyQuests: () => Promise<void>;
   completeQuest: (questId: string, isWeekly: boolean) => Promise<void>;
+}
+
+function notifyQuestCompletion(quest: DailyQuest | WeeklyQuest, isWeekly: boolean) {
+  useNotificationsStore.getState().pushToast({
+    kind: 'quest',
+    title: isWeekly ? 'Missão semanal selada' : 'Missão diária selada',
+    description: quest.name,
+    xp: quest.xpReward,
+    icon: '📜',
+  });
 }
 
 export const useQuestsStore = create<QuestsStore>((set, get) => ({
@@ -87,7 +98,7 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
         // Save to database
         for (const quest of dailyQuests) {
           await db.execute(
-            'INSERT INTO daily_quests (id, name, description, target, current_progress, completed, date, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            'INSERT OR IGNORE INTO daily_quests (id, name, description, target, current_progress, completed, date, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
             [quest.id, quest.name, quest.description, quest.target, 0, 0, quest.date, quest.xpReward]
           );
         }
@@ -118,7 +129,7 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
         // Save to database
         for (const quest of weeklyQuests) {
           await db.execute(
-            'INSERT INTO weekly_quests (id, name, description, target, current_progress, completed, week_start, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            'INSERT OR IGNORE INTO weekly_quests (id, name, description, target, current_progress, completed, week_start, xp_reward) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
             [quest.id, quest.name, quest.description, quest.target, 0, 0, quest.weekStart, quest.xpReward]
           );
         }
@@ -157,9 +168,11 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
       const newProgress = Math.min(quest.currentProgress + increment, quest.target);
       const completed = newProgress >= quest.target;
 
+      const dateKey = isWeekly ? (quest as WeeklyQuest).weekStart : (quest as DailyQuest).date;
+      const dateColumn = isWeekly ? 'week_start' : 'date';
       await db.execute(
-        `UPDATE ${table} SET current_progress = $1, completed = $2 WHERE id = $3`,
-        [newProgress, completed ? 1 : 0, questId]
+        `UPDATE ${table} SET current_progress = $1, completed = $2 WHERE id = $3 AND ${dateColumn} = $4`,
+        [newProgress, completed ? 1 : 0, questId, dateKey]
       );
 
       // If quest was just completed, award XP
@@ -170,7 +183,7 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
         );
 
         console.log(`Quest completed: ${quest.name} (+${quest.xpReward} XP)`);
-        // TODO: Show quest completion notification/toast
+        notifyQuestCompletion(quest, isWeekly);
       }
 
       // Reload quests to reflect changes
@@ -191,9 +204,11 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
       const quest = quests.find((q) => q.id === questId);
       if (!quest || quest.completed) return;
 
+      const dateKey = isWeekly ? (quest as WeeklyQuest).weekStart : (quest as DailyQuest).date;
+      const dateColumn = isWeekly ? 'week_start' : 'date';
       await db.execute(
-        `UPDATE ${table} SET completed = 1, current_progress = target WHERE id = $1`,
-        [questId]
+        `UPDATE ${table} SET completed = 1, current_progress = target WHERE id = $1 AND ${dateColumn} = $2`,
+        [questId, dateKey]
       );
 
       // Award XP
@@ -201,6 +216,8 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
         'UPDATE user_progress SET total_xp = total_xp + $1 WHERE id = 1',
         [quest.xpReward]
       );
+
+      notifyQuestCompletion(quest, isWeekly);
 
       await get().loadQuests();
     } catch (error) {
@@ -231,8 +248,8 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
       const completed = uniqueDays >= 7;
 
       await db.execute(
-        'UPDATE weekly_quests SET current_progress = $1, completed = $2 WHERE id = $3',
-        [uniqueDays, completed ? 1 : 0, 'weekly_perfect_week']
+        'UPDATE weekly_quests SET current_progress = $1, completed = $2 WHERE id = $3 AND week_start = $4',
+        [uniqueDays, completed ? 1 : 0, 'weekly_perfect_week', quest.weekStart]
       );
 
       // If quest was just completed, award XP
@@ -243,7 +260,7 @@ export const useQuestsStore = create<QuestsStore>((set, get) => ({
         );
 
         console.log(`Quest completed: ${quest.name} (+${quest.xpReward} XP)`);
-        // TODO: Show quest completion notification/toast
+        notifyQuestCompletion(quest, true);
       }
 
       // Reload quests to reflect changes

@@ -48,7 +48,7 @@ export function TaskSelector({
   if (tasks.length === 0) {
     return (
       <p className="text-xs text-text-muted text-center py-2 font-body">
-        Nenhum pergaminho pendente
+        Nenhum pergaminho pronto para vincular
       </p>
     );
   }
@@ -64,7 +64,7 @@ export function TaskSelector({
           </span>
           <button
             onClick={handleClear}
-            className="p-1 text-text-muted hover:text-danger transition-colors"
+            className="p-1 text-text-muted hover:text-error transition-colors"
             aria-label="Desvincular tarefa"
           >
             <X size={14} />
@@ -108,7 +108,7 @@ export function TaskSelector({
               <span className="flex-shrink-0">{EFFORT_CONFIG[task.effort].icon}</span>
               <span className="flex-1 truncate text-text">{task.title}</span>
               {task.status === 'overdue' && (
-                <span className="text-xs text-danger font-heading">Vencida</span>
+                <span className="text-xs text-error font-heading">Vencida</span>
               )}
             </button>
           ))}

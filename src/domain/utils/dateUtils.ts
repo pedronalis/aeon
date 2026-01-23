@@ -78,12 +78,13 @@ export function calculateStreaks(dates: string[]): {
   current: number;
   best: number;
 } {
-  if (dates.length === 0) {
+  const uniqueDates = Array.from(new Set(dates));
+  if (uniqueDates.length === 0) {
     return { current: 0, best: 0 };
   }
 
   // Ordenar datas em ordem decrescente (mais recente primeiro)
-  const sortedDates = [...dates].sort((a, b) => b.localeCompare(a));
+  const sortedDates = [...uniqueDates].sort((a, b) => b.localeCompare(a));
 
   const today = formatDate(new Date());
   const yesterday = formatDate(new Date(Date.now() - 24 * 60 * 60 * 1000));

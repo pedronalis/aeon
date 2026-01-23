@@ -9,6 +9,12 @@ interface QuestCardProps {
 export function QuestCard({ quest }: QuestCardProps) {
   const progressPercentage = (quest.currentProgress / quest.target) * 100;
   const isCompleted = quest.completed;
+  const remaining = Math.max(0, quest.target - quest.currentProgress);
+  const nearComplete = !isCompleted && progressPercentage >= 70;
+  const unit = getQuestUnit(quest.id);
+  const remainingLabel = unit
+    ? `Faltam ${remaining} ${remaining === 1 ? unit.singular : unit.plural}`
+    : `Faltam ${remaining}`;
 
   return (
     <Card
@@ -18,6 +24,9 @@ export function QuestCard({ quest }: QuestCardProps) {
           ? 'forge-border-success'
           : 'forge-border-primary'
         }
+        ${isCompleted ? 'hover:shadow-torch-success' : 'hover:shadow-torch-primary'}
+        ${nearComplete ? 'shadow-torch-sm ring-1 ring-primary/20' : ''}
+        hover-forge-lift
       `}
     >
       <div className="flex items-start gap-3">
@@ -81,9 +90,35 @@ export function QuestCard({ quest }: QuestCardProps) {
                 }}
               />
             </div>
+            {!isCompleted && (
+              <div className="flex items-center justify-between text-[11px] font-body text-text-muted">
+                <span>{remainingLabel}</span>
+                {nearComplete && (
+                  <span className="text-primary font-heading uppercase tracking-[0.2em]">
+                    Quase selada
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </Card>
   );
+}
+
+function getQuestUnit(questId: string): { singular: string; plural: string } | null {
+  if (questId.includes('minutes')) {
+    return { singular: 'minuto', plural: 'minutos' };
+  }
+  if (questId.includes('focuses')) {
+    return { singular: 'ritual', plural: 'rituais' };
+  }
+  if (questId.includes('perfect_week')) {
+    return { singular: 'dia', plural: 'dias' };
+  }
+  if (questId.includes('early_bird') || questId.includes('daily_10')) {
+    return { singular: 'ritual', plural: 'rituais' };
+  }
+  return null;
 }

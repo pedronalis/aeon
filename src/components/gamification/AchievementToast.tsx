@@ -36,7 +36,7 @@ export function AchievementToast({ achievement, show, onClose }: AchievementToas
             <div className="flex items-center gap-2 mb-1">
               <Trophy size={16} className="text-warning flex-shrink-0" />
               <span className="text-xs font-semibold text-warning uppercase tracking-wider">
-                Achievement Desbloqueado!
+                Conquista desbloqueada
               </span>
             </div>
             <h3 className="font-bold text-text text-lg mb-1 truncate">

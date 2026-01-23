@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
+import { invoke } from '@tauri-apps/api/core';
 import { TimerEngine } from '@/domain/timer/TimerEngine';
 import type { TimerSnapshot } from '@/domain/timer/types';
 import type { Mode } from '@/domain/modes/Mode';
@@ -13,6 +14,7 @@ import { useSettingsStore } from './useSettingsStore';
 import { useStatsStore } from './useStatsStore';
 import { useQuestsStore } from './useQuestsStore';
 import { useTasksStore } from './useTasksStore';
+import { useNotificationsStore } from './useNotificationsStore';
 
 interface TimerStore {
   engine: TimerEngine;
@@ -32,6 +34,7 @@ interface TimerStore {
 }
 
 let tickIntervalId: ReturnType<typeof setInterval> | null = null;
+let timerSessionActive = false;
 
 export const useTimerStore = create<TimerStore>((set, get) => {
   const initialMode = getDefaultPreset();
@@ -46,11 +49,15 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.start();
       set({ snapshot });
-      void ensureNotificationPermission();
-      void ensureWebNotificationPermission();
-      void ensureAudioContext();
-      void ensureNotificationPermission();
-      void ensureAudioContext();
+      timerSessionActive = true;
+      const { notificationsEnabled, soundEnabled } = useSettingsStore.getState().settings;
+      if (notificationsEnabled) {
+        void ensureNotificationPermission();
+        void ensureWebNotificationPermission();
+      }
+      if (soundEnabled) {
+        void ensureAudioContext();
+      }
 
       // Iniciar interval de 1 segundo
       if (tickIntervalId) clearInterval(tickIntervalId);
@@ -74,11 +81,15 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.resume();
       set({ snapshot });
-      void ensureNotificationPermission();
-      void ensureWebNotificationPermission();
-      void ensureAudioContext();
-      void ensureNotificationPermission();
-      void ensureAudioContext();
+      timerSessionActive = true;
+      const { notificationsEnabled, soundEnabled } = useSettingsStore.getState().settings;
+      if (notificationsEnabled) {
+        void ensureNotificationPermission();
+        void ensureWebNotificationPermission();
+      }
+      if (soundEnabled) {
+        void ensureAudioContext();
+      }
 
       // Reiniciar interval
       if (tickIntervalId) clearInterval(tickIntervalId);
@@ -88,9 +99,13 @@ export const useTimerStore = create<TimerStore>((set, get) => {
     },
 
     skip: () => {
-      const { engine } = get();
+      const { engine, snapshot: currentSnapshot } = get();
+      if (currentSnapshot.state !== 'RUNNING' && currentSnapshot.state !== 'PAUSED') {
+        return;
+      }
       const snapshot = engine.skip();
       set({ snapshot });
+      timerSessionActive = true;
 
       if (tickIntervalId) {
         clearInterval(tickIntervalId);
@@ -105,6 +120,7 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.reset();
       set({ snapshot });
+      timerSessionActive = false;
 
       if (tickIntervalId) {
         clearInterval(tickIntervalId);
@@ -128,6 +144,7 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.setMode(mode);
       set({ snapshot });
+      timerSessionActive = false;
 
       if (tickIntervalId) {
         clearInterval(tickIntervalId);
@@ -149,6 +166,7 @@ export const useTimerStore = create<TimerStore>((set, get) => {
         handlePhaseComplete(snapshot);
       }
     },
+
   };
 });
 
@@ -156,11 +174,17 @@ export const useTimerStore = create<TimerStore>((set, get) => {
  * Handler quando uma fase é completada
  */
 async function handlePhaseComplete(snapshot: TimerSnapshot) {
+  if (snapshot.state !== 'FINISHED') return;
+  if (!timerSessionActive) return;
+  timerSessionActive = false;
+  const completedFocus = snapshot.phase === 'SHORT_BREAK' || snapshot.phase === 'LONG_BREAK';
+  const notifications = useNotificationsStore.getState();
+  let xpGained = 0;
+  let currentStreak = 0;
+
   // Se completou um FOCUS, salvar no backend
-  if (snapshot.phase === 'SHORT_BREAK' || snapshot.phase === 'LONG_BREAK') {
+  if (completedFocus) {
     // Significa que acabou de completar um FOCUS (agora está no break)
-    let xpGained = 0;
-    let currentStreak = 0;
     try {
       const db = await Database.load('sqlite:pomodore.db');
       const date = formatDate(new Date());
@@ -214,7 +238,6 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
           achievement.xp
         );
         console.log(`Achievement unlocked: ${achievement.name} (+${achievement.xp} XP)`);
-        // TODO: Mostrar toast de achievement
       }
 
       // 7. Atualizar progresso de quests
@@ -246,8 +269,37 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
     } catch (error) {
       console.error('Error saving focus:', error);
     }
+  }
 
+  if (completedFocus) {
+    const description = currentStreak >= 3
+      ? `A chama arde forte: ${currentStreak} dias de sequência.`
+      : 'A chama foi alimentada.';
+    if (xpGained > 0) {
+      notifications.pushToast({
+        kind: 'xp',
+        title: 'Ritual consumado',
+        description,
+        xp: xpGained,
+        icon: '🔥',
+      });
+    } else {
+      notifications.pushToast({
+        kind: 'timer',
+        title: 'Ritual consumado',
+        description,
+        icon: '🔥',
+      });
+    }
     await notifyFocusCompletion(xpGained, currentStreak);
+  } else {
+    notifications.pushToast({
+      kind: 'timer',
+      title: 'Intervalo encerrado',
+      description: 'Hora de reacender o foco.',
+      icon: '⏳',
+    });
+    await notifyBreakCompletion();
   }
 }
 
@@ -256,9 +308,23 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
  */
 async function playCompletionSound() {
   try {
-    const audio = new Audio('/sounds/complete.wav');
-    audio.volume = 0.5;
-    await audio.play();
+    const context = await ensureAudioContext();
+    if (context) {
+      const buffer = await loadCompletionSound(context);
+      if (buffer) {
+        const source = context.createBufferSource();
+        const gain = context.createGain();
+
+        source.buffer = buffer;
+        gain.gain.value = 0.5;
+
+        source.connect(gain);
+        gain.connect(context.destination);
+        source.start(0);
+        return;
+      }
+    }
+    await playFallbackBeep();
   } catch (error) {
     console.error('Error playing sound:', error);
     await playFallbackBeep();
@@ -288,42 +354,60 @@ async function playFallbackBeep() {
 
 async function notifyFocusCompletion(xpGained: number, currentStreak: number) {
   const settingsState = useSettingsStore.getState();
+  const tasks: Array<Promise<unknown>> = [];
   if (settingsState.settings.notificationsEnabled) {
     const streakBonus = currentStreak >= 3 ? ` (Bônus streak ${currentStreak}d!)` : '';
     const body = xpGained > 0 ? `+${xpGained} XP${streakBonus}` : 'Foco concluído.';
-    try {
-      await ensureNotificationPermission();
-
-      await sendNotification({
-        title: 'Foco completado!',
-        body,
-      });
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      await sendWebNotification({
-        title: 'Foco completado!',
-        body,
-      });
-    }
+    tasks.push(sendCompletionNotification({ title: 'Foco completado!', body }));
   }
 
   if (settingsState.settings.soundEnabled) {
-    await playCompletionSound();
+    tasks.push(playCompletionSound());
+  }
+
+  if (tasks.length > 0) {
+    await Promise.allSettled(tasks);
+  }
+}
+
+async function notifyBreakCompletion() {
+  const settingsState = useSettingsStore.getState();
+  const tasks: Array<Promise<unknown>> = [];
+  if (settingsState.settings.notificationsEnabled) {
+    tasks.push(
+      sendCompletionNotification({
+        title: 'Pausa concluída!',
+        body: 'Hora de voltar ao foco.',
+      })
+    );
+  }
+
+  if (settingsState.settings.soundEnabled) {
+    tasks.push(playCompletionSound());
+  }
+
+  if (tasks.length > 0) {
+    await Promise.allSettled(tasks);
   }
 }
 
 let notificationPermissionRequested = false;
 
-async function ensureNotificationPermission() {
-  if (notificationPermissionRequested) return;
-  notificationPermissionRequested = true;
+async function ensureNotificationPermission(): Promise<boolean> {
   try {
     const permissionGranted = await isPermissionGranted();
-    if (!permissionGranted) {
-      await requestPermission();
+    if (permissionGranted) {
+      return true;
     }
+    if (notificationPermissionRequested) {
+      return false;
+    }
+    notificationPermissionRequested = true;
+    const result = await requestPermission();
+    return result === 'granted';
   } catch (error) {
     console.error('Error requesting notification permission:', error);
+    return false;
   }
 }
 
@@ -351,29 +435,94 @@ async function ensureAudioContext(): Promise<AudioContext | null> {
 
 let webNotificationPermissionRequested = false;
 
-async function ensureWebNotificationPermission() {
-  if (webNotificationPermissionRequested) return;
+async function ensureWebNotificationPermission(): Promise<boolean> {
+  if (typeof Notification === 'undefined') return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  if (webNotificationPermissionRequested) return false;
   webNotificationPermissionRequested = true;
-  if (typeof Notification === 'undefined') return;
   try {
     if (Notification.permission === 'default') {
-      await Notification.requestPermission();
+      const result = await Notification.requestPermission();
+      return result === 'granted';
     }
+    return Notification.permission === 'granted';
   } catch (error) {
     console.error('Error requesting web notification permission:', error);
+    return false;
   }
 }
 
-async function sendWebNotification(payload: { title: string; body: string }) {
-  if (typeof Notification === 'undefined') return;
+async function sendWebNotification(payload: { title: string; body: string }): Promise<boolean> {
+  if (typeof Notification === 'undefined') return false;
   try {
-    if (Notification.permission === 'default') {
-      await ensureWebNotificationPermission();
-    }
-    if (Notification.permission !== 'granted') return;
+    const permissionGranted = await ensureWebNotificationPermission();
+    if (!permissionGranted) return false;
     new Notification(payload.title, { body: payload.body });
+    return true;
   } catch (error) {
     console.error('Error sending web notification:', error);
+    return false;
+  }
+}
+
+async function sendCompletionNotification(payload: { title: string; body: string }) {
+  const permissionGranted = await ensureNotificationPermission();
+  const systemSent = await trySendSystemNotification(payload);
+  if (systemSent) return;
+
+  const webSent = await sendWebNotification(payload);
+  if (import.meta.env.DEV) {
+    console.info('[notifications] systemSent=%s webSent=%s permission=%s', systemSent, webSent, permissionGranted);
+  }
+}
+
+let completionSoundBuffer: AudioBuffer | null = null;
+let completionSoundLoading: Promise<AudioBuffer | null> | null = null;
+
+async function loadCompletionSound(context: AudioContext): Promise<AudioBuffer | null> {
+  if (completionSoundBuffer) return completionSoundBuffer;
+  if (completionSoundLoading) return completionSoundLoading;
+
+  completionSoundLoading = fetch('/sounds/complete.wav')
+    .then((response) => response.arrayBuffer())
+    .then((buffer) => context.decodeAudioData(buffer))
+    .then((decoded) => {
+      completionSoundBuffer = decoded;
+      return decoded;
+    })
+    .catch((error) => {
+      console.error('Error loading completion sound:', error);
+      return null;
+    })
+    .finally(() => {
+      completionSoundLoading = null;
+    });
+
+  return completionSoundLoading;
+}
+
+async function trySendSystemNotification(payload: { title: string; body: string }): Promise<boolean> {
+  const rustSent = await sendSystemNotificationViaRust(payload);
+  if (rustSent) {
+    return true;
+  }
+  try {
+    await sendNotification(payload);
+    return true;
+  } catch (error) {
+    console.error('Error sending system notification:', error);
+    return false;
+  }
+}
+
+async function sendSystemNotificationViaRust(payload: { title: string; body: string }): Promise<boolean> {
+  try {
+    await invoke('send_system_notification', payload);
+    return true;
+  } catch (error) {
+    console.error('Error sending Rust notification:', error);
+    return false;
   }
 }
 

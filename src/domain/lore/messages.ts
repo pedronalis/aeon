@@ -41,7 +41,7 @@ export function getDashboardMessage(
       : streak >= 3
       ? ' Continue assim, guerreiro.'
       : '';
-    return `Ritual completado. A Chama brilha mais forte. +${lastXpGained} Moedas de Ouro.${streakBonus}`;
+    return `Ritual consumado. A Chama brilha mais forte. +${lastXpGained} XP.${streakBonus}`;
   }
 
   // Durante foco
@@ -88,16 +88,31 @@ export function getAchievementFlavorText(achievementId: string): string {
     five_focuses: 'Sua determinação em um único dia impressiona os veteranos.',
     streak_3: 'A Chama nunca apagou por três dias. Continue assim.',
     streak_7: 'Uma semana de dedicação. A Ordem reconhece sua perseverança.',
+    streak_14: 'Duas semanas de disciplina. Você vigia a Chama com honra.',
     streak_30: 'Poucos conseguem manter a Chama viva por tanto tempo.',
+    streak_60: 'Sessenta dias de voto inquebrável. Sua lenda cresce.',
     total_25: 'Vinte e cinco rituais completados. Você não é mais um novato.',
     total_100: 'Cem rituais! Sua experiência é notável.',
+    total_250: 'Duzentos e cinquenta rituais. Sua dedicação virou legado.',
     total_500: 'Quinhentos rituais. Você entrou para a história da Ordem.',
+    total_1000: 'Mil rituais. Você é mito vivo da Chama.',
     try_all_modes: 'Sua versatilidade em diferentes técnicas é admirável.',
     custom_mode: 'Você criou seu próprio caminho. Verdadeira maestria.',
+    mode_loyalist: 'Sua lealdade a um estilo moldou verdadeira maestria.',
     early_bird: 'O amanhecer testemunha sua disciplina.',
     night_owl: 'A noite profunda não detém sua determinação.',
     weekend_warrior: 'Mesmo nos dias de descanso, você treina.',
+    daily_10: 'Um dia de maratona. A Chama brilhou sem descanso.',
     perfect_week: 'Uma semana perfeita. Disciplina digna de um mestre.',
+    first_task: 'Seu primeiro pergaminho foi selado. A tinta da Ordem marca seu nome.',
+    task_total_25: 'Vinte e cinco pergaminhos selados. Sua escrita já é respeitada.',
+    task_total_100: 'Cem pergaminhos cumpridos. Você domina a arte do registro.',
+    task_streak_5: 'Cinco pergaminhos no prazo. Disciplina digna de um escriba.',
+    task_streak_10: 'Dez pergaminhos no prazo. Pontualidade digna da Ordem.',
+    task_early: 'Você antecipa o destino. A Ordem aprecia sua prontidão.',
+    task_epic: 'Dez épicos selados. Você caçou desafios grandiosos.',
+    task_linked: 'Dez rituais num único pergaminho. Foco inabalável.',
+    task_linked_25: 'Vinte e cinco rituais em um único pergaminho. Devoção absoluta.',
   };
 
   return flavors[achievementId] || 'A Ordem reconhece sua conquista.';

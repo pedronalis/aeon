@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
 import { save } from '@tauri-apps/plugin-dialog';
 import type { DailyStats, UserProgress } from '@/domain/scoring/ScoreEngine';
+import { getAchievementById } from '@/domain/scoring/achievements';
+import { getAchievementFlavorText } from '@/domain/lore/messages';
 import { calculateStreaks } from '@/domain/utils/dateUtils';
+import { useNotificationsStore } from './useNotificationsStore';
 
 interface DailyStatsRow {
   date: string;
@@ -159,6 +162,18 @@ export const useStatsStore = create<StatsStore>((set, get) => ({
           totalXp: state.progress.totalXp + xp,
         },
       }));
+
+      const achievement = getAchievementById(achievementId);
+      if (achievement) {
+        useNotificationsStore.getState().pushToast({
+          kind: 'achievement',
+          title: achievement.name,
+          description: achievement.description,
+          detail: getAchievementFlavorText(achievementId),
+          xp: achievement.xp,
+          icon: achievement.icon,
+        });
+      }
     } catch (error) {
       console.error('Error unlocking achievement:', error);
     }

@@ -172,6 +172,59 @@ pub fn get_migrations() -> Vec<Migration> {
             CREATE INDEX IF NOT EXISTS idx_tasks_sort_order ON tasks(sort_order);
         "#,
         kind: MigrationKind::Up,
+    },
+    Migration {
+        version: 4,
+        description: "fix_quest_primary_keys",
+        sql: r#"
+            -- Recreate daily quests with composite primary key (id + date)
+            ALTER TABLE daily_quests RENAME TO daily_quests_old;
+            CREATE TABLE daily_quests (
+                id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                target INTEGER NOT NULL,
+                current_progress INTEGER NOT NULL DEFAULT 0,
+                completed BOOLEAN NOT NULL DEFAULT 0,
+                date TEXT NOT NULL,
+                xp_reward INTEGER NOT NULL,
+                PRIMARY KEY (id, date)
+            );
+            INSERT OR IGNORE INTO daily_quests (id, name, description, target, current_progress, completed, date, xp_reward)
+            SELECT id, name, description, target, current_progress, completed, date, xp_reward
+            FROM daily_quests_old;
+            DROP TABLE daily_quests_old;
+            CREATE INDEX IF NOT EXISTS idx_daily_quests_date ON daily_quests(date);
+
+            -- Recreate weekly quests with composite primary key (id + week_start)
+            ALTER TABLE weekly_quests RENAME TO weekly_quests_old;
+            CREATE TABLE weekly_quests (
+                id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                target INTEGER NOT NULL,
+                current_progress INTEGER NOT NULL DEFAULT 0,
+                completed BOOLEAN NOT NULL DEFAULT 0,
+                week_start TEXT NOT NULL,
+                xp_reward INTEGER NOT NULL,
+                PRIMARY KEY (id, week_start)
+            );
+            INSERT OR IGNORE INTO weekly_quests (id, name, description, target, current_progress, completed, week_start, xp_reward)
+            SELECT id, name, description, target, current_progress, completed, week_start, xp_reward
+            FROM weekly_quests_old;
+            DROP TABLE weekly_quests_old;
+            CREATE INDEX IF NOT EXISTS idx_weekly_quests_week_start ON weekly_quests(week_start);
+        "#,
+        kind: MigrationKind::Up,
+    },
+    Migration {
+        version: 5,
+        description: "add_task_penalty_applied",
+        sql: r#"
+            -- Track if an overdue penalty was already applied
+            ALTER TABLE tasks ADD COLUMN penalty_applied INTEGER NOT NULL DEFAULT 0;
+        "#,
+        kind: MigrationKind::Up,
     }]
 }
 

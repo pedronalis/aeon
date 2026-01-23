@@ -69,6 +69,7 @@ export function SettingsPage() {
     }
   };
 
+
   const avatar = profile ? getAvatarById(profile.avatarId) : null;
 
   return (
@@ -164,6 +165,21 @@ export function SettingsPage() {
                       <span className="text-xs text-text-muted font-body">Aparece no seu perfil</span>
                       <span className="text-xs text-text-secondary font-body">{localBio.length}/100</span>
                     </div>
+                    {!localBio.trim() && (
+                      <div className="parchment-panel rounded-lg p-3 mt-3 flex items-start gap-3">
+                        <div className="parchment-primary p-2 rounded-md">
+                          <Crown size={14} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.3em] text-text-muted font-heading">
+                            Sem juramento
+                          </p>
+                          <p className="text-xs text-text-secondary font-body mt-1">
+                            Registre um lema para guiar sua jornada.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

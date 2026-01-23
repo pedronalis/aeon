@@ -9,8 +9,8 @@ import { useStatsStore } from './store/useStatsStore';
 import { useUserProfileStore } from './store/useUserProfileStore';
 import { useQuestsStore } from './store/useQuestsStore';
 import { useTasksStore } from './store/useTasksStore';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { XpBar } from './components/user/XpBar';
+import { NotificationCenter } from './components/notifications/NotificationCenter';
 import { Clock, BarChart3, Flame, Scroll, Shield, FileText } from 'lucide-react';
 
 type Tab = 'timer' | 'stats' | 'quests' | 'tasks' | 'settings';
@@ -19,6 +19,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer');
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const isTopAlignedTab = activeTab === 'tasks' || activeTab === 'quests' || activeTab === 'stats';
 
   console.log('[App] Rendering, isInitializing:', isInitializing);
 
@@ -39,6 +40,7 @@ function App() {
         await useQuestsStore.getState().loadQuests();
         console.log('[App] Loading tasks...');
         await useTasksStore.getState().loadTasks();
+        await useTasksStore.getState().applyOverduePenalties();
         console.log('[App] Initialization complete!');
       } catch (error) {
         console.error('[App] Error initializing app:', error);
@@ -50,8 +52,13 @@ function App() {
     initializeApp();
   }, []);
 
-  // Keyboard shortcuts
-  useKeyboardShortcuts();
+  useEffect(() => {
+    if (isInitializing || initError) return;
+    const intervalId = setInterval(() => {
+      void useTasksStore.getState().applyOverduePenalties();
+    }, 10 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [isInitializing, initError]);
 
   // Error screen
   if (initError) {
@@ -87,6 +94,7 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-text">
+      <NotificationCenter />
       {/* Header Premium Medieval */}
       <header className="parchment-panel border-b border-primary/20 shadow-elevation-2 flex-shrink-0">
         <div className="container mx-auto px-4 py-3 md:py-4">
@@ -187,18 +195,25 @@ function App() {
       </nav>
 
       {/* Main Content */}
-      <main role="tabpanel" className="flex-1 overflow-y-auto">
-        <div key={activeTab} className="animate-fade-in">
-          {activeTab === 'timer' && <TimerPage />}
-          {activeTab === 'stats' && <StatsPage />}
-          {activeTab === 'quests' && <QuestsPage />}
-          {activeTab === 'tasks' && <TasksPage />}
-          {activeTab === 'settings' && <SettingsPage />}
+      <main role="tabpanel" className="flex-1 flex overflow-y-auto">
+        <div
+          className={`
+            flex-1 w-full flex flex-col items-center
+            ${isTopAlignedTab ? 'justify-start' : 'justify-center'}
+          `}
+        >
+          <div key={activeTab} className="animate-fade-in w-full">
+            {activeTab === 'timer' && <TimerPage />}
+            {activeTab === 'stats' && <StatsPage />}
+            {activeTab === 'quests' && <QuestsPage />}
+            {activeTab === 'tasks' && <TasksPage />}
+            {activeTab === 'settings' && <SettingsPage />}
+          </div>
         </div>
       </main>
 
       {/* Footer Medieval */}
-      <footer className="parchment-panel border-t border-primary/10 py-4 md:py-5 flex-shrink-0">
+      <footer className="parchment-panel border-t border-primary/10 py-4 md:py-5 flex-shrink-0 mt-auto">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3">
             {/* Branding */}

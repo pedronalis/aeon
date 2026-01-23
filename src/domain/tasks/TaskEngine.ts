@@ -35,6 +35,7 @@ export class TaskEngine {
       xpReward: config.xpReward,
       xpPenalty: config.xpPenalty,
       xpEarned: 0,
+      penaltyApplied: false,
       deadline: input.deadline,
       createdAt: formatDate(new Date()),
       completedAt: undefined,
@@ -203,7 +204,7 @@ export class TaskEngine {
 
     const daysUntil = this.getDaysUntilDeadline(task.deadline);
 
-    if (daysUntil < 0) return 'text-danger';
+    if (daysUntil < 0) return 'text-error';
     if (daysUntil === 0) return 'text-warning';
     if (daysUntil <= 2) return 'text-warning';
     return 'text-text-secondary';
@@ -216,9 +217,10 @@ export class TaskEngine {
   static getTasksForPenalty(tasks: Task[]): Task[] {
     return tasks.filter(
       (task) =>
-        task.status === 'pending' &&
+        (task.status === 'pending' || task.status === 'overdue') &&
         task.deadline &&
-        this.getDaysUntilDeadline(task.deadline) < 0
+        this.getDaysUntilDeadline(task.deadline) < 0 &&
+        !task.penaltyApplied
     );
   }
 

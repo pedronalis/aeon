@@ -1,6 +1,6 @@
 import type { Mode } from '../modes/Mode';
 import { ACHIEVEMENTS, type Achievement } from './achievements';
-import { calculateStreaks, formatDate, parseDate } from '../utils/dateUtils';
+import { calculateStreaks, formatDate, parseDate, getWeekRange } from '../utils/dateUtils';
 
 /**
  * Estatísticas diárias
@@ -76,6 +76,10 @@ export class ScoreEngine {
 
     // Helper para verificar se já foi desbloqueado
     const isUnlocked = (id: string) => unlockedAchievementIds.includes(id);
+    const dailyTotals = dailyStats.reduce((acc, stat) => {
+      acc.set(stat.date, (acc.get(stat.date) ?? 0) + stat.pomodorosCompleted);
+      return acc;
+    }, new Map<string, number>());
 
     // Beginner achievements
     if (!isUnlocked('first_focus') && totalPomodoros >= 1) {
@@ -84,8 +88,8 @@ export class ScoreEngine {
 
     if (!isUnlocked('five_focuses')) {
       const today = formatDate(new Date());
-      const todayStats = dailyStats.find((s) => s.date === today);
-      if (todayStats && todayStats.pomodorosCompleted >= 5) {
+      const todayTotal = dailyTotals.get(today) ?? 0;
+      if (todayTotal >= 5) {
         newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'five_focuses')!);
       }
     }
@@ -102,8 +106,16 @@ export class ScoreEngine {
       newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'streak_7')!);
     }
 
+    if (!isUnlocked('streak_14') && streak >= 14) {
+      newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'streak_14')!);
+    }
+
     if (!isUnlocked('streak_30') && streak >= 30) {
       newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'streak_30')!);
+    }
+
+    if (!isUnlocked('streak_60') && streak >= 60) {
+      newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'streak_60')!);
     }
 
     // Quantity achievements
@@ -115,8 +127,16 @@ export class ScoreEngine {
       newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'total_100')!);
     }
 
+    if (!isUnlocked('total_250') && totalPomodoros >= 250) {
+      newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'total_250')!);
+    }
+
     if (!isUnlocked('total_500') && totalPomodoros >= 500) {
       newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'total_500')!);
+    }
+
+    if (!isUnlocked('total_1000') && totalPomodoros >= 1000) {
+      newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'total_1000')!);
     }
 
     // Modes achievements
@@ -130,6 +150,17 @@ export class ScoreEngine {
 
     if (!isUnlocked('custom_mode') && hasCustomMode) {
       newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'custom_mode')!);
+    }
+
+    if (!isUnlocked('mode_loyalist')) {
+      const modeTotals = dailyStats.reduce((acc, stat) => {
+        acc.set(stat.modeId, (acc.get(stat.modeId) ?? 0) + stat.pomodorosCompleted);
+        return acc;
+      }, new Map<string, number>());
+      const hasLoyalist = Array.from(modeTotals.values()).some((count) => count >= 50);
+      if (hasLoyalist) {
+        newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'mode_loyalist')!);
+      }
     }
 
     // Special achievements
@@ -149,26 +180,42 @@ export class ScoreEngine {
 
     if (!isUnlocked('weekend_warrior')) {
       // Verificar se algum sábado ou domingo tem >= 3 focos
-      const weekendStats = dailyStats.filter((s) => {
-        const date = parseDate(s.date);
+      const hasWeekendWith3 = Array.from(dailyTotals.entries()).some(([dateStr, count]) => {
+        const date = parseDate(dateStr);
         const day = date.getDay();
-        return day === 0 || day === 6; // Domingo ou Sábado
+        return (day === 0 || day === 6) && count >= 3;
       });
-
-      const hasWeekendWith3 = weekendStats.some((s) => s.pomodorosCompleted >= 3);
       if (hasWeekendWith3) {
         newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'weekend_warrior')!);
       }
     }
 
-    if (!isUnlocked('perfect_week')) {
-      // Verificar última semana completa (últimos 7 dias)
-      const last7Days = dailyStats
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, 7);
+    if (!isUnlocked('daily_10')) {
+      const today = formatDate(new Date());
+      const todayTotal = dailyTotals.get(today) ?? 0;
+      if (todayTotal >= 10) {
+        newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'daily_10')!);
+      }
+    }
 
-      if (last7Days.length === 7) {
-        const allHave2Plus = last7Days.every((s) => s.pomodorosCompleted >= 2);
+    if (!isUnlocked('perfect_week') && completionTime) {
+      const [weekStart, weekEnd] = getWeekRange(completionTime);
+      const weekEndStr = formatDate(weekEnd);
+      const completionDate = formatDate(completionTime);
+
+      if (completionDate === weekEndStr) {
+        let allHave2Plus = true;
+        for (let i = 0; i < 7; i += 1) {
+          const day = new Date(weekStart);
+          day.setDate(weekStart.getDate() + i);
+          const dayStr = formatDate(day);
+          const count = dailyTotals.get(dayStr) ?? 0;
+          if (count < 2) {
+            allHave2Plus = false;
+            break;
+          }
+        }
+
         if (allHave2Plus) {
           newUnlocks.push(ACHIEVEMENTS.find((a) => a.id === 'perfect_week')!);
         }
@@ -196,12 +243,10 @@ export class ScoreEngine {
       const today = formatDate(new Date());
       filtered = dailyStats.filter((s) => s.date === today);
     } else if (period === 'week') {
-      const today = new Date();
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoStr = formatDate(weekAgo);
-
-      filtered = dailyStats.filter((s) => s.date >= weekAgoStr);
+      const [weekStart, weekEnd] = getWeekRange(new Date());
+      const weekStartStr = formatDate(weekStart);
+      const weekEndStr = formatDate(weekEnd);
+      filtered = dailyStats.filter((s) => s.date >= weekStartStr && s.date <= weekEndStr);
     }
 
     const pomodoros = filtered.reduce((sum, s) => sum + s.pomodorosCompleted, 0);

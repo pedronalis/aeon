@@ -57,7 +57,7 @@ export function SubtaskItem({ subtask, onToggle, onDelete, disabled }: SubtaskIt
           onClick={() => onDelete(subtask.id)}
           className="
             opacity-0 group-hover:opacity-100
-            p-1 rounded text-text-muted hover:text-danger
+            p-1 rounded text-text-muted hover:text-error
             transition-all duration-fast
           "
           aria-label="Remover subtarefa"
