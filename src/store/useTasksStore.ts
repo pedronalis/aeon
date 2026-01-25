@@ -8,6 +8,7 @@ import {
   type CreateTaskInput,
   type TaskRow,
   type SubtaskRow,
+  type TaskUpdateInput,
   taskFromRow,
   subtaskFromRow,
 } from '@/domain/tasks/Task';
@@ -30,7 +31,7 @@ interface TasksStore {
 
   // CRUD Tasks
   createTask: (input: CreateTaskInput) => Promise<Task | null>;
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  updateTask: (taskId: string, updates: TaskUpdateInput) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   completeTask: (taskId: string) => Promise<number>; // Retorna XP ganho
 
@@ -186,7 +187,7 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
     }
   },
 
-  updateTask: async (taskId: string, updates: Partial<Task>) => {
+  updateTask: async (taskId: string, updates: TaskUpdateInput) => {
     try {
       const { db, tasks, subtasks } = get();
       if (!db) return;

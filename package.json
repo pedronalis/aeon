@@ -16,6 +16,7 @@
     "tauri:dev:x11-intel": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=0 LIBVA_DRIVER_NAME=iHD tauri dev",
     "tauri:dev:software": "GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
     "tauri:build": "tauri build",
+    "tauri:build:windows": "tauri build --bundles nsis",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",

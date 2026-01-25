@@ -522,7 +522,7 @@ export function StatsPage() {
                     {sortedItems.length === 0 ? (
                       <div className="parchment-panel rounded-xl p-6 text-center border border-border/60 md:col-span-2 xl:col-span-3">
                         <div className={`mx-auto mb-3 w-12 h-12 rounded-full flex items-center justify-center ${styles.iconWrap}`}>
-                          <Icon size={20} className={styles.text} />
+                          <CategoryIcon size={20} className={styles.text} />
                         </div>
                         <h4 className="text-sm font-heading text-text mb-2">Nenhuma conquista visível</h4>
                         <p className="text-text-secondary text-sm font-body">

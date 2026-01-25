@@ -54,6 +54,11 @@ export interface Task {
   sortOrder: number;     // Ordem de exibição manual
 }
 
+/** Input para atualizar tarefa */
+export type TaskUpdateInput = Partial<Omit<Task, 'deadline'>> & {
+  deadline?: string | null;
+};
+
 /** Interface de Subtarefa */
 export interface Subtask {
   id: string;

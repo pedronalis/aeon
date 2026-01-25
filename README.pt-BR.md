@@ -1,7 +1,5 @@
 # Aeon ⏳
 
-Idiomas: **PT-BR (principal)** | [PT-BR (cópia)](README.pt-BR.md)
-
 [![License: MIT](https://img.shields.io/github/license/pedronalis/aeon)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/pedronalis/aeon/main)](https://github.com/pedronalis/aeon/commits/main)
 [![Repo Size](https://img.shields.io/github/repo-size/pedronalis/aeon)](https://github.com/pedronalis/aeon)

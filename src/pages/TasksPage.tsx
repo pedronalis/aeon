@@ -9,7 +9,7 @@ import { TaskFilters } from '@/components/tasks/TaskFilters';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { useNotificationsStore } from '@/store/useNotificationsStore';
 import { TaskEngine } from '@/domain/tasks/TaskEngine';
-import type { CreateTaskInput, Task } from '@/domain/tasks/Task';
+import type { CreateTaskInput, Task, TaskUpdateInput } from '@/domain/tasks/Task';
 
 type TaskSectionId = 'overdue' | 'today' | 'week' | 'future' | 'nodate' | 'completed';
 
@@ -240,7 +240,7 @@ export function TasksPage() {
     await updateSubtask(subtaskId, title);
   };
 
-  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+  const handleUpdateTask = async (taskId: string, updates: TaskUpdateInput) => {
     await updateTask(taskId, updates);
   };
 

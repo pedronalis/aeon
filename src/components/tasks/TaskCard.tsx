@@ -14,7 +14,7 @@ import {
   X,
   Shield,
 } from 'lucide-react';
-import type { Task, Subtask } from '@/domain/tasks/Task';
+import type { Task, Subtask, TaskUpdateInput } from '@/domain/tasks/Task';
 import { TaskEngine } from '@/domain/tasks/TaskEngine';
 import { EFFORT_CONFIG, EFFORT_ORDER } from '@/domain/tasks/Task';
 import { Card } from '@/components/shared/Card';
@@ -34,7 +34,7 @@ interface TaskCardProps {
   onAddSubtask?: (taskId: string, title: string) => void;
   onDeleteSubtask?: (subtaskId: string) => void;
   onUpdateSubtask?: (subtaskId: string, title: string) => void;
-  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
+  onUpdateTask?: (taskId: string, updates: TaskUpdateInput) => void;
   onSetActive?: (taskId: string) => void;
   onReorderSubtasks?: (taskId: string, subtaskIds: string[]) => void;
   // Task drag handlers

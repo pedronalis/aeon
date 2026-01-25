@@ -21,12 +21,6 @@ export function CommandPanel() {
     PAUSED: 'Em pausa',
     FINISHED: 'Concluído',
   } as const;
-  const stateToneMap = {
-    IDLE: 'text-text-muted',
-    RUNNING: 'text-success',
-    PAUSED: 'text-warning',
-    FINISHED: 'text-primary',
-  } as const;
   const stateDotMap = {
     IDLE: 'bg-text-muted',
     RUNNING: 'bg-success',
@@ -40,7 +34,6 @@ export function CommandPanel() {
     FINISHED: 'border-primary/30 text-primary bg-primary/10',
   } as const;
   const stateLabel = stateLabelMap[snapshot.state];
-  const stateTone = stateToneMap[snapshot.state];
   const statePill = statePillMap[snapshot.state];
   const stateDot = stateDotMap[snapshot.state];
   const adjustHint = isRunning ? 'Trancado durante ritual' : 'Disponível antes do ritual';
