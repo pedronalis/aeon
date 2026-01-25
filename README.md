@@ -1,6 +1,6 @@
 # Aeon ⏳
 
-Idiomas: **PT-BR (principal)** | [PT-BR (cópia)](README.pt-BR.md)
+Idiomas: 🇧🇷 PT-BR (principal) | 🇺🇸 [English](README.en.md)
 
 [![License: MIT](https://img.shields.io/github/license/pedronalis/aeon)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/pedronalis/aeon/main)](https://github.com/pedronalis/aeon/commits/main)
@@ -9,6 +9,45 @@ Idiomas: **PT-BR (principal)** | [PT-BR (cópia)](README.pt-BR.md)
 > _Domine seu tempo, forje sua eternidade_
 
 Aeon é um aplicativo desktop de Pomodoro com foco em precisão, gamificação e um tema medieval premium. Roda offline, guarda seus dados localmente e oferece modos de foco personalizáveis.
+
+## 🪟 Instalação no Windows (passo a passo)
+
+1. Instale Node.js 20+ e Git.
+2. Instale Rust (MSVC) via rustup e abra um novo terminal:
+
+```bash
+winget install Rustlang.Rustup
+rustup default stable-x86_64-pc-windows-msvc
+```
+
+3. Instale **Visual Studio Build Tools** com o workload **Desktop development with C++** (MSVC + Windows 10/11 SDK).
+4. Instale o **WebView2 Runtime (Evergreen)**.
+5. Clone o repo e instale dependencias:
+
+```bash
+git clone https://github.com/pedronalis/aeon.git
+cd aeon
+npm install
+```
+
+6. Rodar em desenvolvimento:
+
+```bash
+npm run tauri:dev
+```
+
+7. Gerar instalador (NSIS):
+
+```bash
+npm run tauri:build:windows
+```
+
+8. Instalador gerado em `src-tauri/target/release/bundle/nsis/`.
+9. Opcional (MSI): instale o **WiX Toolset** e rode:
+
+```bash
+npm run tauri:build -- --bundles msi
+```
 
 ## 🖼️ Screenshots
 
@@ -122,19 +161,6 @@ npm run tauri:build
 ```
 
 Instaladores em `src-tauri/target/release/bundle/`.
-
-### Windows (instalador)
-
-```bash
-npm run tauri:build:windows
-```
-
-Gera instalador NSIS em `src-tauri/target/release/bundle/nsis/`.
-Se precisar MSI, instale o WiX Toolset e rode:
-
-```bash
-npm run tauri:build -- --bundles msi
-```
 
 ## 🗂️ Estrutura do repo
 
