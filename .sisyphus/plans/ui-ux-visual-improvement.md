@@ -359,7 +359,7 @@ npm test
 ```
 
 ### Final Checklist
-- [ ] Core flow visual hierarchy improved (Timer + navegacao + Settings).
-- [ ] WCAG AA contraste/estados de foco no core flow.
-- [ ] Low-FX reduz sombras/animacoes sem quebra visual.
-- [ ] Nenhuma mudanca de logica ou novas dependencias.
+- [x] Core flow visual hierarchy improved (Timer + navegacao + Settings).
+- [x] WCAG AA contraste/estados de foco no core flow.
+- [x] Low-FX reduz sombras/animacoes sem quebra visual.
+- [x] Nenhuma mudanca de logica ou novas dependencias.
