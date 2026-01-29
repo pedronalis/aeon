@@ -58,3 +58,12 @@
   - Verified `src/styles/globals.css` implements `:root[data-fx="low"]` overrides.
   - Animations, transitions, and heavy shadows are correctly disabled in Low-FX mode.
 - **Conclusion**: All visual improvements and performance modes are implemented and verified. The system is stable and ready.
+
+## Settings Page Refinement (Task 4)
+- Applied `.text-body-reading` to description paragraphs for better readability.
+- Enhanced input focus states with `.focus-gold` and `.focus-gold-glow` to match the premium theme.
+- Improved scannability in the Preferences section by adding hover effects (`hover:bg-surface/50`) and consistent spacing.
+- Maintained the medieval aesthetic (parchment, forge borders) while improving accessibility and visual hierarchy.
+
+## Timer Hero Size Adjustment
+- Reduced `fontSize.hero` from 8rem to 6.4rem (~20%) to better fit the circular timer frame.

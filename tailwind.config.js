@@ -87,7 +87,7 @@ export default {
         '5xl': ['3rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
         '6xl': ['3.75rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
         '7xl': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
-        'hero': ['8rem', { lineHeight: '1', letterSpacing: '-0.05em' }], // Timer hero
+        'hero': ['6.4rem', { lineHeight: '1', letterSpacing: '-0.05em' }], // Timer hero
         'timer-sm': ['3rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],
         'timer-md': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],
         'timer-lg': ['6rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],

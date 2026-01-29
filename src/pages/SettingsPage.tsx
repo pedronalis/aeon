@@ -85,7 +85,7 @@ export function SettingsPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-gilded-primary font-display">
                 Configurações do Reino
               </h1>
-              <p className="text-text-secondary text-sm font-body">Personalize sua experiência</p>
+              <p className="text-body-reading mt-1">Personalize sua experiência e legado.</p>
             </div>
           </div>
 
@@ -115,7 +115,7 @@ export function SettingsPage() {
                       onBlur={handleUsernameBlur}
                       placeholder="Digite seu nome"
                       maxLength={30}
-                      className="w-full px-4 py-3 parchment-ultra forge-border-primary rounded-xl text-text placeholder:text-text-muted focus:shadow-torch-primary focus:outline-none transition-all duration-300 font-body"
+                      className="w-full px-4 py-3 parchment-ultra forge-border-primary rounded-xl text-text placeholder:text-text-muted focus-gold focus-gold-glow transition-all duration-300 font-body"
                     />
                   </div>
 
@@ -130,7 +130,7 @@ export function SettingsPage() {
                           key={av.id}
                           onClick={() => handleUpdateProfile('avatarId', av.id)}
                           className={`
-                            relative p-2 rounded-xl transition-all duration-300
+                            relative p-2 rounded-xl transition-all duration-300 focus-gold
                             ${profile?.avatarId === av.id
                               ? 'parchment-primary forge-border-primary shadow-torch-primary scale-110 z-10'
                               : 'parchment-panel border border-transparent hover:border-primary/30 hover:scale-105'
@@ -159,7 +159,7 @@ export function SettingsPage() {
                       placeholder="Ex: 'Foco e minha espada, disciplina meu escudo'"
                       maxLength={100}
                       rows={2}
-                      className="w-full px-4 py-3 parchment-ultra forge-border-primary rounded-xl text-text placeholder:text-text-muted focus:shadow-torch-primary focus:outline-none transition-all duration-300 resize-none font-body"
+                      className="w-full px-4 py-3 parchment-ultra forge-border-primary rounded-xl text-text placeholder:text-text-muted focus-gold focus-gold-glow transition-all duration-300 resize-none font-body"
                     />
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-xs text-text-muted font-body">Aparece no seu perfil</span>
@@ -174,7 +174,7 @@ export function SettingsPage() {
                           <p className="text-[10px] uppercase tracking-[0.3em] text-text-muted font-heading">
                             Sem juramento
                           </p>
-                          <p className="text-xs text-text-secondary font-body mt-1">
+                          <p className="text-body-reading text-sm mt-1">
                             Registre um lema para guiar sua jornada.
                           </p>
                         </div>
@@ -194,14 +194,14 @@ export function SettingsPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between">
+                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between hover:bg-surface/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="parchment-primary p-2 rounded-lg">
                         <Bell size={18} className="text-primary" />
                       </div>
                       <div>
                         <p className="text-text font-medium font-heading">Notificações</p>
-                        <p className="text-text-muted text-xs font-body">Alertas ao completar fases</p>
+                        <p className="text-body-reading text-sm">Alertas ao completar fases</p>
                       </div>
                     </div>
                     <Switch
@@ -212,14 +212,14 @@ export function SettingsPage() {
                     />
                   </div>
 
-                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between">
+                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between hover:bg-surface/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="parchment-success p-2 rounded-lg">
                         <Volume2 size={18} className="text-success" />
                       </div>
                       <div>
                         <p className="text-text font-medium font-heading">Efeitos Sonoros</p>
-                        <p className="text-text-muted text-xs font-body">Sons ao completar fases</p>
+                        <p className="text-body-reading text-sm">Sons ao completar fases</p>
                       </div>
                     </div>
                     <Switch
@@ -228,14 +228,14 @@ export function SettingsPage() {
                     />
                   </div>
 
-                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between">
+                  <div className="parchment-panel rounded-xl p-4 flex items-center justify-between hover:bg-surface/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="parchment-warning p-2 rounded-lg">
                         <Zap size={18} className="text-warning" />
                       </div>
                       <div>
                         <p className="text-text font-medium font-heading">Modo de Performance</p>
-                        <p className="text-text-muted text-xs font-body">Reduz animações e sombras pesadas</p>
+                        <p className="text-body-reading text-sm">Reduz animações e sombras pesadas</p>
                       </div>
                     </div>
                     <Switch
@@ -245,7 +245,7 @@ export function SettingsPage() {
                   </div>
 
                   {/* Zoom da Interface */}
-                  <div className="parchment-panel rounded-xl p-4">
+                  <div className="parchment-panel rounded-xl p-4 hover:bg-surface/50 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="parchment-warning p-2 rounded-lg">
@@ -253,7 +253,7 @@ export function SettingsPage() {
                         </div>
                         <div>
                           <p className="text-text font-medium font-heading">Zoom da Interface</p>
-                          <p className="text-text-muted text-xs font-body">Ajuste o tamanho dos elementos</p>
+                          <p className="text-body-reading text-sm">Ajuste o tamanho dos elementos</p>
                         </div>
                       </div>
                       <span className="text-lg font-bold text-primary font-heading">{settings.uiZoom}%</span>
@@ -267,7 +267,7 @@ export function SettingsPage() {
                         step="10"
                         value={settings.uiZoom}
                         onChange={(e) => updateSettings({ uiZoom: parseInt(e.target.value, 10) })}
-                        className="slider-medieval flex-1 h-2 rounded-full appearance-none cursor-pointer"
+                        className="slider-medieval flex-1 h-2 rounded-full appearance-none cursor-pointer focus-gold"
                       />
                       <span className="text-xs text-text-muted font-body">130%</span>
                     </div>
@@ -276,7 +276,7 @@ export function SettingsPage() {
                         <button
                           key={zoom}
                           onClick={() => updateSettings({ uiZoom: zoom })}
-                          className={`px-2 py-1 rounded text-xs font-heading transition-all duration-200 ${
+                          className={`px-2 py-1 rounded text-xs font-heading transition-all duration-200 focus-gold ${
                             settings.uiZoom === zoom
                               ? 'parchment-primary forge-border-primary text-primary'
                               : 'parchment-panel text-text-muted hover:text-text'
@@ -320,7 +320,7 @@ export function SettingsPage() {
                     </div>
 
                     {profile?.bio && (
-                      <p className="text-text-secondary text-sm italic mb-4 parchment-panel rounded-lg p-3 font-body">
+                      <p className="text-body-reading text-sm italic mb-4 parchment-panel rounded-lg p-3">
                         "{profile.bio}"
                       </p>
                     )}
@@ -369,7 +369,7 @@ export function SettingsPage() {
                     <h3 className="text-sm font-bold text-text font-display">Sobre o Aeon</h3>
                   </div>
 
-                  <div className="space-y-3 text-sm font-body">
+                  <div className="space-y-3 text-body-reading text-sm">
                     <div className="flex justify-between">
                       <span className="text-text-muted">Versão</span>
                       <span className="text-text font-mono">1.0.0</span>
@@ -402,7 +402,7 @@ export function SettingsPage() {
 
                   <div className="parchment-panel rounded-xl p-4">
                     <p className="text-text font-medium mb-1 font-heading text-sm">Resetar Progresso</p>
-                    <p className="text-text-muted text-xs font-body mb-3">
+                    <p className="text-body-reading text-sm mb-3 opacity-80">
                       Apaga estatísticas, XP e conquistas.
                     </p>
                     <Button
@@ -453,7 +453,7 @@ export function SettingsPage() {
             <AlertTriangle size={20} className="text-error flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-error font-semibold mb-1 font-heading">Esta ação é irreversível!</p>
-              <p className="text-text-secondary text-sm font-body">
+              <p className="text-body-reading text-sm">
                 Todos os seus dados serão permanentemente apagados.
               </p>
             </div>
@@ -461,7 +461,7 @@ export function SettingsPage() {
 
           <div className="parchment-panel rounded-xl p-4">
             <p className="text-text font-medium mb-3 font-heading">Será apagado:</p>
-            <ul className="space-y-2 text-text-secondary text-sm font-body">
+            <ul className="space-y-2 text-body-reading text-sm">
               <li className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-error"></span>
                 Todas as estatísticas e histórico
@@ -478,7 +478,7 @@ export function SettingsPage() {
           </div>
 
           <div className="p-4 parchment-success forge-border-success rounded-xl">
-            <p className="text-text-secondary text-sm font-body">
+            <p className="text-body-reading text-sm">
               <span className="text-success font-medium">Os modos preset serão mantidos</span> e você poderá começar do zero.
             </p>
           </div>
