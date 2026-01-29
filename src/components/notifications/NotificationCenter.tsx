@@ -68,6 +68,8 @@ const KIND_ICONS: Record<NotificationKind, typeof Sparkles> = {
 export function NotificationCenter() {
   const toasts = useNotificationsStore((state) => state.toasts);
   const dismissToast = useNotificationsStore((state) => state.dismissToast);
+  const pauseToast = useNotificationsStore((state) => state.pauseToast);
+  const resumeToast = useNotificationsStore((state) => state.resumeToast);
 
   if (toasts.length === 0) return null;
 
@@ -83,6 +85,7 @@ export function NotificationCenter() {
         const Icon = KIND_ICONS[toast.kind];
         const isXp = toast.kind === 'xp';
         const isAchievement = toast.kind === 'achievement';
+        const showXp = typeof toast.xp === 'number' && toast.xp > 0;
         return (
           <div
             key={toast.id}
@@ -91,6 +94,10 @@ export function NotificationCenter() {
               ${styles.background} ${styles.border} ${styles.shadow}
               animate-slide-in-right relative overflow-hidden
             `}
+            onMouseEnter={() => pauseToast(toast.id)}
+            onMouseLeave={() => resumeToast(toast.id)}
+            onFocus={() => pauseToast(toast.id)}
+            onBlur={() => resumeToast(toast.id)}
           >
             <div className="flex items-start gap-3">
               <div
@@ -111,13 +118,19 @@ export function NotificationCenter() {
                   <p className={`text-[10px] font-heading uppercase tracking-[0.24em] ${styles.label}`}>
                     {label}
                   </p>
-                  {isXp && typeof toast.xp === 'number' && toast.xp > 0 && (
-                    <span className="text-base font-bold font-heading text-gilded-primary">
+                  {showXp && (
+                    <span
+                      className={
+                        isXp
+                          ? 'text-base font-bold font-heading text-gilded-primary'
+                          : `text-[11px] font-bold tracking-wide px-2 py-1 rounded-full border ${styles.badge} whitespace-nowrap`
+                      }
+                    >
                       +{toast.xp} XP
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-semibold text-text font-heading">
+                <h3 className="text-sm font-semibold text-text font-heading leading-snug line-clamp-2">
                   {toast.title}
                 </h3>
                 {toast.description && (
@@ -132,17 +145,6 @@ export function NotificationCenter() {
                 )}
               </div>
             </div>
-
-            {!isXp && typeof toast.xp === 'number' && toast.xp > 0 && (
-              <div
-                className={`
-                  absolute top-3 right-9 text-[11px] font-bold tracking-wide
-                  px-2 py-1 rounded-full border ${styles.badge}
-                `}
-              >
-                +{toast.xp} XP
-              </div>
-            )}
 
             <button
               onClick={() => dismissToast(toast.id)}
