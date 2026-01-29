@@ -257,7 +257,7 @@ Critical Path: Task 1 → Task 2 → Task 3/4 → Task 5
   - Controles primarios visivelmente destacados.
   - Contraste AA para textos e estados de foco.
 
-- [ ] 4. Refinar visual de Settings (core)
+- [x] 4. Refinar visual de Settings (core)
 
   **What to do**:
   - Reestruturar seções e espaçamentos para leitura escaneavel.
