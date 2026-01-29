@@ -298,7 +298,7 @@ Critical Path: Task 1 → Task 2 → Task 3/4 → Task 5
   - Labels/descricoes com hierarquia consistente.
   - Foco visivel e contraste AA para inputs/toggles.
 
-- [ ] 5. QA manual e verificacoes de build/test
+- [x] 5. QA manual e verificacoes de build/test
 
   **What to do**:
   - Rodar `npm run build` e `npm test`.
