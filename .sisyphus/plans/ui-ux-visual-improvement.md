@@ -174,7 +174,7 @@ Critical Path: Task 1 → Task 2 → Task 3/4 → Task 5
   - Estados de foco/hover/disabled do core flow atendem contraste AA.
   - Low-FX reduz sombras/animacoes para novas classes.
 
-- [ ] 2. Atualizar navegacao e componentes compartilhados
+- [x] 2. Atualizar navegacao e componentes compartilhados
 
   **What to do**:
   - Refinar layout/espacamento das tabs e do header em `src/App.tsx`.

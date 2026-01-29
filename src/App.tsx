@@ -97,7 +97,7 @@ function App() {
       <NotificationCenter />
       {/* Header Premium Medieval */}
       <header className="parchment-panel border-b border-primary/20 shadow-elevation-2 flex-shrink-0">
-        <div className="container mx-auto px-4 py-3 md:py-4">
+        <div className="container mx-auto px-4 py-4 md:py-5">
           <div className="flex items-center justify-between gap-4">
             {/* Logo + Nome */}
             <div className="flex items-center gap-3">
@@ -105,7 +105,7 @@ function App() {
                 size={26}
                 className="text-primary animate-gold-breathe flex-shrink-0"
               />
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gilded-primary font-display">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gilded-primary font-display drop-shadow-lg">
                 Aeon
               </h1>
             </div>
@@ -119,10 +119,10 @@ function App() {
       {/* Tab Navigation Medieval */}
       <nav className="border-b border-primary/10 bg-background/80 flex-shrink-0" role="tablist">
         <div className="container mx-auto px-4">
-          <div className="flex gap-3">
+          <div className="flex gap-3 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
             <button
               onClick={() => setActiveTab('timer')}
-              className={`tab group ${activeTab === 'timer' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
+              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'timer' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
               role="tab"
               aria-selected={activeTab === 'timer'}
             >
@@ -136,7 +136,7 @@ function App() {
             </button>
             <button
               onClick={() => setActiveTab('stats')}
-              className={`tab group ${activeTab === 'stats' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
+              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'stats' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
               role="tab"
               aria-selected={activeTab === 'stats'}
             >
@@ -150,7 +150,7 @@ function App() {
             </button>
             <button
               onClick={() => setActiveTab('quests')}
-              className={`tab group ${activeTab === 'quests' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
+              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'quests' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
               role="tab"
               aria-selected={activeTab === 'quests'}
             >
@@ -164,7 +164,7 @@ function App() {
             </button>
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`tab group ${activeTab === 'tasks' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
+              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'tasks' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
               role="tab"
               aria-selected={activeTab === 'tasks'}
             >
@@ -178,7 +178,7 @@ function App() {
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`tab group ${activeTab === 'settings' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
+              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'settings' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
               role="tab"
               aria-selected={activeTab === 'settings'}
             >

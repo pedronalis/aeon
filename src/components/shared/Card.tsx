@@ -62,7 +62,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 
     const interactionStyles = [
       hoverable && 'hover-forge-lift',
-      clickable && 'cursor-pointer',
+      clickable && 'cursor-pointer focus-gold',
       (hoverable || clickable) && 'hover:shadow-torch-primary',
       borderGlow && hoverable && 'hover:forge-border-primary hover:shadow-torch-primary hover:forge-border-animated',
     ];
