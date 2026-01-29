@@ -50,7 +50,7 @@
   /* Button styles */
   .btn {
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 font-heading;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-royal {
@@ -72,7 +72,7 @@
   .input {
     @apply bg-surface border-2 border-border rounded-lg px-4 py-2;
     @apply text-text placeholder:text-text-secondary font-body;
-    @apply focus:border-primary focus:outline-none transition-colors;
+    @apply focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors;
   }
 
   /* Badge/Pill styles - Royal seal */
@@ -907,9 +907,32 @@
 }
 
 /* Animation mappings */
-.animate-glow-breathe {
-  @apply animate-gold-breathe;
-}
+  .animate-glow-breathe {
+    @apply animate-gold-breathe;
+  }
+
+  /* Typography Utilities */
+  .typography-hero {
+    @apply font-display text-hero text-primary drop-shadow-lg;
+  }
+
+  .text-body-reading {
+    @apply font-body text-base leading-relaxed tracking-wide text-text-secondary;
+  }
+
+  /* Focus Utilities */
+  .focus-gold {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .focus-gold-glow {
+    @apply focus-visible:outline-none focus-visible:shadow-torch-sm transition-shadow duration-200;
+  }
+
+  /* Accessibility Utilities */
+  .high-contrast-text {
+    @apply text-text font-medium;
+  }
 
 @layer utilities {
   :root[data-fx="low"] *,
@@ -993,6 +1016,16 @@
 
   :root[data-fx="low"] .text-torch-primary {
     text-shadow: none !important;
+  }
+
+  :root[data-fx="low"] .typography-hero {
+    filter: none !important;
+    text-shadow: none !important;
+  }
+
+  :root[data-fx="low"] .focus-gold-glow:focus-visible {
+    box-shadow: none !important;
+    outline: 2px solid var(--primary) !important;
   }
 
   :root[data-fx="low"] .bg-torch-radial-primary::before {

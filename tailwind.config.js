@@ -51,7 +51,7 @@ export default {
         text: {
           DEFAULT: '#e8dcc4',     // pergaminho
           secondary: '#b5a68a',   // pergaminho envelhecido
-          muted: '#7a6f5d',       // pergaminho escuro
+          muted: '#948672',       // pergaminho escuro (Ajustado para WCAG AA)
         },
         border: {
           DEFAULT: '#4a4035',     // ferro forjado
@@ -87,6 +87,7 @@ export default {
         '5xl': ['3rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
         '6xl': ['3.75rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
         '7xl': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.05em' }],
+        'hero': ['8rem', { lineHeight: '1', letterSpacing: '-0.05em' }], // Timer hero
         'timer-sm': ['3rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],
         'timer-md': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],
         'timer-lg': ['6rem', { lineHeight: '1', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }],
@@ -143,6 +144,15 @@ export default {
       },
       transitionTimingFunction: {
         'bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+      },
+      letterSpacing: {
+        'tighter': '-0.05em',
+        'tight': '-0.025em',
+        'normal': '0em',
+        'wide': '0.025em',
+        'wider': '0.05em',
+        'widest': '0.1em',
+        'medieval': '0.15em', // Headers uppercase
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

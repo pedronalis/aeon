@@ -131,7 +131,7 @@ Critical Path: Task 1 → Task 2 → Task 3/4 → Task 5
 
 ## TODOs
 
-- [ ] 1. Refinar sistema visual do core flow
+- [x] 1. Refinar sistema visual do core flow
 
   **What to do**:
   - Revisar tokens e utilitarios em `src/styles/globals.css` e `tailwind.config.js`.
