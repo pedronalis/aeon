@@ -216,7 +216,7 @@ Critical Path: Task 1 → Task 2 → Task 3/4 → Task 5
   - Tabs com area de clique adequada e contraste AA.
   - Componentes compartilhados refletem o refinamento visual.
 
-- [ ] 3. Refinar visual do Timer (core)
+- [x] 3. Refinar visual do Timer (core)
 
   **What to do**:
   - Ajustar hierarquia tipografica do tempo e controles primarios.

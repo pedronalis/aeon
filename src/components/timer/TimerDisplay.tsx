@@ -69,13 +69,12 @@ export function TimerDisplay() {
             {/* Timer centralizado */}
             <div
               className={`
-                font-mono font-bold tracking-tight
+                typography-hero
                 ${isLastMinute
                   ? 'animate-pulse-timer'
                   : ''
                 }
                 ${isRunning ? 'text-glow' : ''}
-                text-5xl sm:text-6xl
                 transition-colors duration-300
               `}
               style={{
