@@ -1,27 +1,24 @@
 import { create } from 'zustand';
-import Database from '@tauri-apps/plugin-sql';
-import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
-import { invoke } from '@tauri-apps/api/core';
 import { TimerEngine } from '@/domain/timer/TimerEngine';
 import type { TimerSnapshot } from '@/domain/timer/types';
 import type { Mode } from '@/domain/modes/Mode';
 import { getDefaultPreset } from '@/domain/modes/presets';
 import { formatDate } from '@/domain/utils/dateUtils';
 import { ScoreEngine } from '@/domain/scoring/ScoreEngine';
-import type { AchievementContext } from '@/domain/scoring/ScoreEngine';
+import type { AchievementContext, DailyStats } from '@/domain/scoring/ScoreEngine';
 import { QuestEngine } from '@/domain/quests/QuestEngine';
 import { useSettingsStore } from './useSettingsStore';
 import { useStatsStore } from './useStatsStore';
 import { useQuestsStore } from './useQuestsStore';
 import { useTasksStore } from './useTasksStore';
 import { useNotificationsStore } from './useNotificationsStore';
+import { tableGet, tableSet, dbGet, dbSet, DB_KEYS } from '@/lib/storage';
 
 interface TimerStore {
   engine: TimerEngine;
   snapshot: TimerSnapshot;
   tickInterval: number | null;
 
-  // Actions
   start: () => void;
   pause: () => void;
   resume: () => void;
@@ -51,15 +48,9 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       set({ snapshot });
       timerSessionActive = true;
       const { notificationsEnabled, soundEnabled } = useSettingsStore.getState().settings;
-      if (notificationsEnabled) {
-        void ensureNotificationPermission();
-        void ensureWebNotificationPermission();
-      }
-      if (soundEnabled) {
-        void ensureAudioContext();
-      }
+      if (notificationsEnabled) void ensureWebNotificationPermission();
+      if (soundEnabled) void ensureAudioContext();
 
-      // Iniciar interval de 1 segundo
       if (tickIntervalId) clearInterval(tickIntervalId);
       tickIntervalId = setInterval(() => {
         get().tick();
@@ -70,11 +61,7 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const { engine } = get();
       const snapshot = engine.pause();
       set({ snapshot });
-
-      if (tickIntervalId) {
-        clearInterval(tickIntervalId);
-        tickIntervalId = null;
-      }
+      if (tickIntervalId) { clearInterval(tickIntervalId); tickIntervalId = null; }
     },
 
     resume: () => {
@@ -83,15 +70,9 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       set({ snapshot });
       timerSessionActive = true;
       const { notificationsEnabled, soundEnabled } = useSettingsStore.getState().settings;
-      if (notificationsEnabled) {
-        void ensureNotificationPermission();
-        void ensureWebNotificationPermission();
-      }
-      if (soundEnabled) {
-        void ensureAudioContext();
-      }
+      if (notificationsEnabled) void ensureWebNotificationPermission();
+      if (soundEnabled) void ensureAudioContext();
 
-      // Reiniciar interval
       if (tickIntervalId) clearInterval(tickIntervalId);
       tickIntervalId = setInterval(() => {
         get().tick();
@@ -100,19 +81,11 @@ export const useTimerStore = create<TimerStore>((set, get) => {
 
     skip: () => {
       const { engine, snapshot: currentSnapshot } = get();
-      if (currentSnapshot.state !== 'RUNNING' && currentSnapshot.state !== 'PAUSED') {
-        return;
-      }
+      if (currentSnapshot.state !== 'RUNNING' && currentSnapshot.state !== 'PAUSED') return;
       const snapshot = engine.skip();
       set({ snapshot });
       timerSessionActive = true;
-
-      if (tickIntervalId) {
-        clearInterval(tickIntervalId);
-        tickIntervalId = null;
-      }
-
-      // Trigger completion handler
+      if (tickIntervalId) { clearInterval(tickIntervalId); tickIntervalId = null; }
       handlePhaseComplete(snapshot);
     },
 
@@ -121,11 +94,7 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const snapshot = engine.reset();
       set({ snapshot });
       timerSessionActive = false;
-
-      if (tickIntervalId) {
-        clearInterval(tickIntervalId);
-        tickIntervalId = null;
-      }
+      if (tickIntervalId) { clearInterval(tickIntervalId); tickIntervalId = null; }
     },
 
     addMinute: () => {
@@ -145,34 +114,21 @@ export const useTimerStore = create<TimerStore>((set, get) => {
       const snapshot = engine.setMode(mode);
       set({ snapshot });
       timerSessionActive = false;
-
-      if (tickIntervalId) {
-        clearInterval(tickIntervalId);
-        tickIntervalId = null;
-      }
+      if (tickIntervalId) { clearInterval(tickIntervalId); tickIntervalId = null; }
     },
 
     tick: () => {
       const { engine } = get();
       const snapshot = engine.tick();
       set({ snapshot });
-
-      // Verificar se fase completou
       if (snapshot.state === 'FINISHED') {
-        if (tickIntervalId) {
-          clearInterval(tickIntervalId);
-          tickIntervalId = null;
-        }
+        if (tickIntervalId) { clearInterval(tickIntervalId); tickIntervalId = null; }
         handlePhaseComplete(snapshot);
       }
     },
-
   };
 });
 
-/**
- * Handler quando uma fase é completada
- */
 async function handlePhaseComplete(snapshot: TimerSnapshot) {
   if (snapshot.state !== 'FINISHED') return;
   if (!timerSessionActive) return;
@@ -182,90 +138,52 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
   let xpGained = 0;
   let currentStreak = 0;
 
-  // Se completou um FOCUS, salvar no backend
   if (completedFocus) {
-    // Significa que acabou de completar um FOCUS (agora está no break)
     try {
-      const db = await Database.load('sqlite:pomodore.db');
+      const dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
       const date = formatDate(new Date());
       const focusMinutes = Math.floor(snapshot.mode.focusDuration / 60);
 
-      // 1. Salvar daily_stats
-      const existing = await db.select<Array<{ pomodoros_completed: number; total_focus_minutes: number }>>(
-        'SELECT pomodoros_completed, total_focus_minutes FROM daily_stats WHERE date = $1 AND mode_id = $2',
-        [date, snapshot.mode.id]
-      );
-
-      if (existing.length > 0) {
-        await db.execute(
-          'UPDATE daily_stats SET pomodoros_completed = pomodoros_completed + 1, total_focus_minutes = total_focus_minutes + $1 WHERE date = $2 AND mode_id = $3',
-          [focusMinutes, date, snapshot.mode.id]
-        );
+      const idx = dailyStats.findIndex((s) => s.date === date && s.modeId === snapshot.mode.id);
+      if (idx !== -1) {
+        dailyStats[idx].pomodorosCompleted += 1;
+        dailyStats[idx].totalFocusMinutes += focusMinutes;
       } else {
-        await db.execute(
-          'INSERT INTO daily_stats (date, mode_id, pomodoros_completed, total_focus_minutes) VALUES ($1, $2, 1, $3)',
-          [date, snapshot.mode.id, focusMinutes]
-        );
+        dailyStats.push({ date, modeId: snapshot.mode.id, pomodorosCompleted: 1, totalFocusMinutes: focusMinutes });
       }
+      await tableSet(DB_KEYS.dailyStats, dailyStats);
 
-      // 2. Buscar current_streak
-      const progressRows = await db.select<Array<{ current_streak: number }>>(
-        'SELECT current_streak FROM user_progress WHERE id = 1'
-      );
-      currentStreak = progressRows.length > 0 ? progressRows[0].current_streak : 0;
-
-      // 3. Calcular XP dinâmico
+      const progress = (await dbGet<{ totalXp: number; currentStreak: number; bestStreak: number; lastActivityDate: string | null }>(DB_KEYS.userProgress)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+      currentStreak = progress.currentStreak;
       xpGained = ScoreEngine.calculateXpForFocus(snapshot.mode, currentStreak);
+      progress.totalXp += xpGained;
+      progress.lastActivityDate = date;
+      await dbSet(DB_KEYS.userProgress, progress);
 
-      // 4. Atualizar XP total e última atividade
-      await db.execute(
-        'UPDATE user_progress SET total_xp = total_xp + $1, last_activity_date = $2 WHERE id = 1',
-        [xpGained, date]
-      );
-
-      // 5. Recarregar stats para ter dados atualizados para achievements
       await useStatsStore.getState().loadStats();
 
-      // 6. Verificar achievements desbloqueados
       const completionTime = new Date();
-      const achievementContext = await buildAchievementContext(db, snapshot, completionTime);
+      const achievementContext = await buildAchievementContext(completionTime);
       const newAchievements = ScoreEngine.checkAchievements(achievementContext);
 
       for (const achievement of newAchievements) {
-        await useStatsStore.getState().unlockAchievement(
-          achievement.id,
-          achievement.category,
-          achievement.xp
-        );
+        await useStatsStore.getState().unlockAchievement(achievement.id, achievement.category, achievement.xp);
         console.log(`Achievement unlocked: ${achievement.name} (+${achievement.xp} XP)`);
       }
 
-      // 7. Atualizar progresso de quests
       const questsStore = useQuestsStore.getState();
-
-      // Quest: 3 focos hoje
       await questsStore.updateQuestProgress('daily_3_focuses', 1, false);
-
-      // Quest: 100 minutos hoje
       await questsStore.updateQuestProgress('daily_100_minutes', focusMinutes, false);
-
-      // Quest: Early bird (antes das 9h)
       if (QuestEngine.isEarlyBirdFocus(completionTime)) {
         await questsStore.updateQuestProgress('daily_early_bird', 1, false);
       }
-
-      // Quest: 20 focos esta semana
       await questsStore.updateQuestProgress('weekly_20_focuses', 1, true);
-
-      // Quest: Perfect week (1 foco por dia) - verificar dias únicos
       await questsStore.updatePerfectWeekProgress();
 
-      // 8. Link pomodoro to active task if any
       const tasksStore = useTasksStore.getState();
       if (tasksStore.activeTaskId) {
         await tasksStore.linkPomodoro(tasksStore.activeTaskId);
       }
-
     } catch (error) {
       console.error('Error saving focus:', error);
     }
@@ -276,36 +194,17 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
       ? `A chama arde forte: ${currentStreak} dias de sequência.`
       : 'A chama foi alimentada.';
     if (xpGained > 0) {
-      notifications.pushToast({
-        kind: 'xp',
-        title: 'Ritual consumado',
-        description,
-        xp: xpGained,
-        icon: '🔥',
-      });
+      notifications.pushToast({ kind: 'xp', title: 'Ritual consumado', description, xp: xpGained, icon: '🔥' });
     } else {
-      notifications.pushToast({
-        kind: 'timer',
-        title: 'Ritual consumado',
-        description,
-        icon: '🔥',
-      });
+      notifications.pushToast({ kind: 'timer', title: 'Ritual consumado', description, icon: '🔥' });
     }
     await notifyFocusCompletion(xpGained, currentStreak);
   } else {
-    notifications.pushToast({
-      kind: 'timer',
-      title: 'Intervalo encerrado',
-      description: 'Hora de reacender o foco.',
-      icon: '⏳',
-    });
+    notifications.pushToast({ kind: 'timer', title: 'Intervalo encerrado', description: 'Hora de reacender o foco.', icon: '⏳' });
     await notifyBreakCompletion();
   }
 }
 
-/**
- * Toca som de conclusão
- */
 async function playCompletionSound() {
   try {
     const context = await ensureAudioContext();
@@ -314,10 +213,8 @@ async function playCompletionSound() {
       if (buffer) {
         const source = context.createBufferSource();
         const gain = context.createGain();
-
         source.buffer = buffer;
         gain.gain.value = 0.5;
-
         source.connect(gain);
         gain.connect(context.destination);
         source.start(0);
@@ -337,14 +234,11 @@ async function playFallbackBeep() {
     if (!context) return;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-
     oscillator.type = 'sine';
     oscillator.frequency.value = 880;
     gain.gain.value = 0.05;
-
     oscillator.connect(gain);
     gain.connect(context.destination);
-
     oscillator.start();
     oscillator.stop(context.currentTime + 0.25);
   } catch (error) {
@@ -358,74 +252,30 @@ async function notifyFocusCompletion(xpGained: number, currentStreak: number) {
   if (settingsState.settings.notificationsEnabled) {
     const streakBonus = currentStreak >= 3 ? ` (Bônus streak ${currentStreak}d!)` : '';
     const body = xpGained > 0 ? `+${xpGained} XP${streakBonus}` : 'Foco concluído.';
-    tasks.push(sendCompletionNotification({ title: 'Foco completado!', body }));
+    tasks.push(sendWebNotification({ title: 'Foco completado!', body }));
   }
-
-  if (settingsState.settings.soundEnabled) {
-    tasks.push(playCompletionSound());
-  }
-
-  if (tasks.length > 0) {
-    await Promise.allSettled(tasks);
-  }
+  if (settingsState.settings.soundEnabled) tasks.push(playCompletionSound());
+  if (tasks.length > 0) await Promise.allSettled(tasks);
 }
 
 async function notifyBreakCompletion() {
   const settingsState = useSettingsStore.getState();
   const tasks: Array<Promise<unknown>> = [];
   if (settingsState.settings.notificationsEnabled) {
-    tasks.push(
-      sendCompletionNotification({
-        title: 'Pausa concluída!',
-        body: 'Hora de voltar ao foco.',
-      })
-    );
+    tasks.push(sendWebNotification({ title: 'Pausa concluída!', body: 'Hora de voltar ao foco.' }));
   }
-
-  if (settingsState.settings.soundEnabled) {
-    tasks.push(playCompletionSound());
-  }
-
-  if (tasks.length > 0) {
-    await Promise.allSettled(tasks);
-  }
-}
-
-let notificationPermissionRequested = false;
-
-async function ensureNotificationPermission(): Promise<boolean> {
-  try {
-    const permissionGranted = await isPermissionGranted();
-    if (permissionGranted) {
-      return true;
-    }
-    if (notificationPermissionRequested) {
-      return false;
-    }
-    notificationPermissionRequested = true;
-    const result = await requestPermission();
-    return result === 'granted';
-  } catch (error) {
-    console.error('Error requesting notification permission:', error);
-    return false;
-  }
+  if (settingsState.settings.soundEnabled) tasks.push(playCompletionSound());
+  if (tasks.length > 0) await Promise.allSettled(tasks);
 }
 
 let audioContext: AudioContext | null = null;
 
 async function ensureAudioContext(): Promise<AudioContext | null> {
   try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return null;
-
-    if (!audioContext) {
-      audioContext = new AudioContextClass();
-    }
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
+    if (!audioContext) audioContext = new AudioContextClass();
+    if (audioContext.state === 'suspended') await audioContext.resume();
     return audioContext;
   } catch (error) {
     console.error('Error initializing audio context:', error);
@@ -466,108 +316,29 @@ async function sendWebNotification(payload: { title: string; body: string }): Pr
   }
 }
 
-async function sendCompletionNotification(payload: { title: string; body: string }) {
-  const permissionGranted = await ensureNotificationPermission();
-  const systemSent = await trySendSystemNotification(payload);
-  if (systemSent) return;
-
-  const webSent = await sendWebNotification(payload);
-  if (import.meta.env.DEV) {
-    console.info('[notifications] systemSent=%s webSent=%s permission=%s', systemSent, webSent, permissionGranted);
-  }
-}
-
 let completionSoundBuffer: AudioBuffer | null = null;
 let completionSoundLoading: Promise<AudioBuffer | null> | null = null;
 
 async function loadCompletionSound(context: AudioContext): Promise<AudioBuffer | null> {
   if (completionSoundBuffer) return completionSoundBuffer;
   if (completionSoundLoading) return completionSoundLoading;
-
   completionSoundLoading = fetch('/sounds/complete.wav')
     .then((response) => response.arrayBuffer())
     .then((buffer) => context.decodeAudioData(buffer))
-    .then((decoded) => {
-      completionSoundBuffer = decoded;
-      return decoded;
-    })
-    .catch((error) => {
-      console.error('Error loading completion sound:', error);
-      return null;
-    })
-    .finally(() => {
-      completionSoundLoading = null;
-    });
-
+    .then((decoded) => { completionSoundBuffer = decoded; return decoded; })
+    .catch((error) => { console.error('Error loading completion sound:', error); return null; })
+    .finally(() => { completionSoundLoading = null; });
   return completionSoundLoading;
 }
 
-async function trySendSystemNotification(payload: { title: string; body: string }): Promise<boolean> {
-  const rustSent = await sendSystemNotificationViaRust(payload);
-  if (rustSent) {
-    return true;
-  }
-  try {
-    await sendNotification(payload);
-    return true;
-  } catch (error) {
-    console.error('Error sending system notification:', error);
-    return false;
-  }
-}
-
-async function sendSystemNotificationViaRust(payload: { title: string; body: string }): Promise<boolean> {
-  try {
-    await invoke('send_system_notification', payload);
-    return true;
-  } catch (error) {
-    console.error('Error sending Rust notification:', error);
-    return false;
-  }
-}
-
-/**
- * Constrói contexto para verificação de achievements
- */
-async function buildAchievementContext(
-  db: Database,
-  _snapshot: TimerSnapshot,
-  completionTime: Date
-): Promise<AchievementContext> {
-  // Buscar daily stats
-  const dailyStatsRows = await db.select<
-    Array<{
-      date: string;
-      mode_id: string;
-      pomodoros_completed: number;
-      total_focus_minutes: number;
-    }>
-  >('SELECT * FROM daily_stats ORDER BY date DESC');
-
-  const dailyStats = dailyStatsRows.map((row) => ({
-    date: row.date,
-    modeId: row.mode_id,
-    pomodorosCompleted: row.pomodoros_completed,
-    totalFocusMinutes: row.total_focus_minutes,
-  }));
-
-  // Buscar achievements desbloqueados
-  const achievementsRows = await db.select<Array<{ id: string }>>(
-    'SELECT id FROM achievements'
-  );
-  const unlockedAchievementIds = achievementsRows.map((row) => row.id);
-
-  // Calcular total de pomodoros
+async function buildAchievementContext(completionTime: Date): Promise<AchievementContext> {
+  const dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
+  const achievementsRecords = await tableGet<{ id: string }>(DB_KEYS.achievements);
+  const unlockedAchievementIds = achievementsRecords.map((row) => row.id);
   const totalPomodoros = dailyStats.reduce((sum, s) => sum + s.pomodorosCompleted, 0);
-
-  // Modos usados
   const modesUsed = new Set(dailyStats.map((s) => s.modeId));
-
-  // Verificar se tem custom mode
-  const modesRows = await db.select<Array<{ is_custom: number }>>(
-    'SELECT is_custom FROM modes WHERE is_custom = 1'
-  );
-  const hasCustomMode = modesRows.length > 0;
+  const modes = await tableGet<{ id: string; isCustom: boolean }>(DB_KEYS.modes);
+  const hasCustomMode = modes.some((m) => m.isCustom);
 
   return {
     dailyStats,

@@ -24,19 +24,3 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
-
-// Mock Tauri API (para testes do frontend sem Tauri rodando)
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  save: vi.fn(),
-  confirm: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-notification', () => ({
-  sendNotification: vi.fn(),
-  isPermissionGranted: vi.fn(),
-  requestPermission: vi.fn(),
-}));

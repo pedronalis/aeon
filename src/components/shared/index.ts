@@ -13,6 +13,8 @@ export type { ContainerProps } from './Container';
 export { Input } from './Input';
 export type { InputProps } from './Input';
 
+export { LoadingFallback } from './LoadingFallback';
+
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
 

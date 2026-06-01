@@ -1,0 +1,17 @@
+{
+  "name": "Aeon - Timer Pomodoro",
+  "short_name": "Aeon",
+  "description": "Timer Pomodoro Medieval com Gamificação, Missões e Conquistas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0d0b",
+  "theme_color": "#0f0d0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

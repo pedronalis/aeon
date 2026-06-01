@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { TimerPage } from './pages/TimerPage';
-import { StatsPage } from './pages/StatsPage';
-import { QuestsPage } from './pages/QuestsPage';
-import { TasksPage } from './pages/TasksPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { Suspense, lazy, useEffect, useState } from 'react';
+
+const TimerPage = lazy(() => import('./pages/TimerPage').then((m) => ({ default: m.TimerPage })));
+const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })));
+const QuestsPage = lazy(() => import('./pages/QuestsPage').then((m) => ({ default: m.QuestsPage })));
+const TasksPage = lazy(() => import('./pages/TasksPage').then((m) => ({ default: m.TasksPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+
 import { useSettingsStore } from './store/useSettingsStore';
 import { useStatsStore } from './store/useStatsStore';
 import { useUserProfileStore } from './store/useUserProfileStore';
@@ -11,6 +13,7 @@ import { useQuestsStore } from './store/useQuestsStore';
 import { useTasksStore } from './store/useTasksStore';
 import { XpBar } from './components/user/XpBar';
 import { NotificationCenter } from './components/notifications/NotificationCenter';
+import { LoadingFallback } from './components/shared/LoadingFallback';
 import { Clock, BarChart3, Flame, Scroll, Shield, FileText } from 'lucide-react';
 
 type Tab = 'timer' | 'stats' | 'quests' | 'tasks' | 'settings';
@@ -202,13 +205,15 @@ function App() {
             ${isTopAlignedTab ? 'justify-start' : 'justify-center'}
           `}
         >
-          <div key={activeTab} className="animate-fade-in w-full">
-            {activeTab === 'timer' && <TimerPage />}
-            {activeTab === 'stats' && <StatsPage />}
-            {activeTab === 'quests' && <QuestsPage />}
-            {activeTab === 'tasks' && <TasksPage />}
-            {activeTab === 'settings' && <SettingsPage />}
-          </div>
+          <Suspense fallback={<LoadingFallback />}>
+            <div key={activeTab} className="animate-fade-in w-full">
+              {activeTab === 'timer' && <TimerPage />}
+              {activeTab === 'stats' && <StatsPage />}
+              {activeTab === 'quests' && <QuestsPage />}
+              {activeTab === 'tasks' && <TasksPage />}
+              {activeTab === 'settings' && <SettingsPage />}
+            </div>
+          </Suspense>
         </div>
       </main>
 
