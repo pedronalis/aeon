@@ -13,8 +13,7 @@ import { useStatsStore } from './store/useStatsStore';
 import { useUserProfileStore } from './store/useUserProfileStore';
 import { useQuestsStore } from './store/useQuestsStore';
 import { useTasksStore } from './store/useTasksStore';
-import { XpBar } from './components/user/XpBar';
-import { UserMenu } from './components/user/UserMenu';
+import { UserCard } from './components/user/UserCard';
 import { NotificationCenter } from './components/notifications/NotificationCenter';
 import { LoadingFallback } from './components/shared/LoadingFallback';
 import { Flame, Monitor, BarChart3, Shield, FileText, Target, Menu, X } from 'lucide-react';
@@ -193,14 +192,9 @@ function App() {
           })}
         </nav>
 
-        {/* Sidebar Footer - User + Theme */}
+        {/* Sidebar Footer - User Card */}
         <div className="px-3 py-4 border-t border-primary/10 space-y-3">
-          <div className="px-3">
-            <XpBar variant="compact" showTitle />
-          </div>
-          <div className="px-3">
-            <UserMenu />
-          </div>
+          <UserCard />
           <div className="px-3 pt-1">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <div className="flex gap-1">
