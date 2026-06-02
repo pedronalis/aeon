@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { Mode } from '@/domain/modes/Mode';
 import { PRESET_MODES } from '@/domain/modes/presets';
-import { dbGet, dbSet, tableGet, tableSet } from '@/lib/storage';
-import { DB_KEYS } from '@/lib/storage';
 import { runMigrations } from '@/lib/db-migrations';
+import { getCurrentUserId, supaGetSettings, supaUpsertSettings } from '@/lib/supabaseStorage';
+import { dbGet, dbSet, tableGet, tableSet, DB_KEYS } from '@/lib/storage';
 
 interface Settings {
   activeMode: string;
@@ -73,19 +73,33 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       set({ loading: true });
       await runMigrations();
-      const saved = await dbGet<SettingsSaved>(DB_KEYS.settings);
       const uiZoom = readUiZoom();
       const lowFx = readLowFx();
+      const userId = await getCurrentUserId();
+      const saved = userId ? await supaGetSettings(userId) : null;
       if (saved) {
         const settings: Settings = {
-          ...saved,
+          activeMode: saved.active_mode,
+          notificationsEnabled: saved.notifications_enabled,
+          soundEnabled: saved.sound_enabled,
           uiZoom,
           lowFx,
         };
         applyVisualSettings(uiZoom, lowFx);
         set({ settings, loading: false });
       } else {
-        set({ loading: false });
+        const localSaved = await dbGet<SettingsSaved>(DB_KEYS.settings);
+        if (localSaved) {
+          const settings: Settings = {
+            ...localSaved,
+            uiZoom,
+            lowFx,
+          };
+          applyVisualSettings(uiZoom, lowFx);
+          set({ settings, loading: false });
+        } else {
+          set({ loading: false });
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -105,13 +119,20 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       if (newSettings.uiZoom !== undefined || newSettings.lowFx !== undefined) {
         applyVisualSettings(updated.uiZoom, updated.lowFx);
       }
-      // Salvar apenas os campos persistidos
       const toSave: SettingsSaved = {
         activeMode: updated.activeMode,
         notificationsEnabled: updated.notificationsEnabled,
         soundEnabled: updated.soundEnabled,
       };
       await dbSet(DB_KEYS.settings, toSave);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaUpsertSettings(userId, {
+          active_mode: toSave.activeMode,
+          notifications_enabled: toSave.notificationsEnabled,
+          sound_enabled: toSave.soundEnabled,
+        });
+      }
       set({ settings: updated });
     } catch (error) {
       console.error('Error updating settings:', error);

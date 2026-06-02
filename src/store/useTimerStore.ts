@@ -13,6 +13,7 @@ import { useQuestsStore } from './useQuestsStore';
 import { useTasksStore } from './useTasksStore';
 import { useNotificationsStore } from './useNotificationsStore';
 import { tableGet, tableSet, dbGet, dbSet, DB_KEYS } from '@/lib/storage';
+import { getCurrentUserId, supaGetDailyStats, supaUpsertDailyStats, supaGetUserProgress, supaUpdateUserProgress, supaGetAchievements, supaGetModes } from '@/lib/supabaseStorage';
 
 interface TimerStore {
   engine: TimerEngine;
@@ -140,9 +141,16 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
 
   if (completedFocus) {
     try {
-      const dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
+      const userId = await getCurrentUserId();
       const date = formatDate(new Date());
       const focusMinutes = Math.floor(snapshot.mode.focusDuration / 60);
+
+      let dailyStats: DailyStats[] = [];
+      if (userId) {
+        dailyStats = await supaGetDailyStats(userId);
+      } else {
+        dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
+      }
 
       const idx = dailyStats.findIndex((s) => s.date === date && s.modeId === snapshot.mode.id);
       if (idx !== -1) {
@@ -151,14 +159,31 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
       } else {
         dailyStats.push({ date, modeId: snapshot.mode.id, pomodorosCompleted: 1, totalFocusMinutes: focusMinutes });
       }
-      await tableSet(DB_KEYS.dailyStats, dailyStats);
 
-      const progress = (await dbGet<{ totalXp: number; currentStreak: number; bestStreak: number; lastActivityDate: string | null }>(DB_KEYS.userProgress)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+      if (userId) {
+        await supaUpsertDailyStats(userId, dailyStats);
+      } else {
+        await tableSet(DB_KEYS.dailyStats, dailyStats);
+      }
+
+      let progress: { totalXp: number; currentStreak: number; bestStreak: number; lastActivityDate: string | null };
+      if (userId) {
+        const p = await supaGetUserProgress(userId);
+        progress = p ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+      } else {
+        progress = (await dbGet<{ totalXp: number; currentStreak: number; bestStreak: number; lastActivityDate: string | null }>(DB_KEYS.userProgress)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+      }
+
       currentStreak = progress.currentStreak;
       xpGained = ScoreEngine.calculateXpForFocus(snapshot.mode, currentStreak);
       progress.totalXp += xpGained;
       progress.lastActivityDate = date;
-      await dbSet(DB_KEYS.userProgress, progress);
+
+      if (userId) {
+        await supaUpdateUserProgress(userId, { totalXp: progress.totalXp, lastActivityDate: date });
+      } else {
+        await dbSet(DB_KEYS.userProgress, progress);
+      }
 
       await useStatsStore.getState().loadStats();
 
@@ -191,7 +216,7 @@ async function handlePhaseComplete(snapshot: TimerSnapshot) {
 
   if (completedFocus) {
     const description = currentStreak >= 3
-      ? `A chama arde forte: ${currentStreak} dias de sequência.`
+      ? `A chama arde forte: ${currentStreak} dias de sequencia.`
       : 'A chama foi alimentada.';
     if (xpGained > 0) {
       notifications.pushToast({ kind: 'xp', title: 'Ritual consumado', description, xp: xpGained, icon: '🔥' });
@@ -250,8 +275,8 @@ async function notifyFocusCompletion(xpGained: number, currentStreak: number) {
   const settingsState = useSettingsStore.getState();
   const tasks: Array<Promise<unknown>> = [];
   if (settingsState.settings.notificationsEnabled) {
-    const streakBonus = currentStreak >= 3 ? ` (Bônus streak ${currentStreak}d!)` : '';
-    const body = xpGained > 0 ? `+${xpGained} XP${streakBonus}` : 'Foco concluído.';
+    const streakBonus = currentStreak >= 3 ? ` (Bonus streak ${currentStreak}d!)` : '';
+    const body = xpGained > 0 ? `+${xpGained} XP${streakBonus}` : 'Foco concluido.';
     tasks.push(sendWebNotification({ title: 'Foco completado!', body }));
   }
   if (settingsState.settings.soundEnabled) tasks.push(playCompletionSound());
@@ -262,7 +287,7 @@ async function notifyBreakCompletion() {
   const settingsState = useSettingsStore.getState();
   const tasks: Array<Promise<unknown>> = [];
   if (settingsState.settings.notificationsEnabled) {
-    tasks.push(sendWebNotification({ title: 'Pausa concluída!', body: 'Hora de voltar ao foco.' }));
+    tasks.push(sendWebNotification({ title: 'Pausa concluida!', body: 'Hora de voltar ao foco.' }));
   }
   if (settingsState.settings.soundEnabled) tasks.push(playCompletionSound());
   if (tasks.length > 0) await Promise.allSettled(tasks);
@@ -332,13 +357,27 @@ async function loadCompletionSound(context: AudioContext): Promise<AudioBuffer |
 }
 
 async function buildAchievementContext(completionTime: Date): Promise<AchievementContext> {
-  const dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
-  const achievementsRecords = await tableGet<{ id: string }>(DB_KEYS.achievements);
-  const unlockedAchievementIds = achievementsRecords.map((row) => row.id);
+  const userId = await getCurrentUserId();
+  let dailyStats: DailyStats[] = [];
+  let unlockedAchievementIds: string[] = [];
+  let hasCustomMode = false;
+
+  if (userId) {
+    dailyStats = await supaGetDailyStats(userId);
+    const achs = await supaGetAchievements(userId);
+    unlockedAchievementIds = achs.map((a) => a.achievement_id);
+    const custom = await supaGetModes(userId);
+    hasCustomMode = custom.length > 0;
+  } else {
+    dailyStats = await tableGet<DailyStats>(DB_KEYS.dailyStats);
+    const achievementsRecords = await tableGet<{ id: string }>(DB_KEYS.achievements);
+    unlockedAchievementIds = achievementsRecords.map((row) => row.id);
+    const modes = await tableGet<{ id: string; isCustom: boolean }>(DB_KEYS.modes);
+    hasCustomMode = modes.some((m) => m.isCustom);
+  }
+
   const totalPomodoros = dailyStats.reduce((sum, s) => sum + s.pomodorosCompleted, 0);
   const modesUsed = new Set(dailyStats.map((s) => s.modeId));
-  const modes = await tableGet<{ id: string; isCustom: boolean }>(DB_KEYS.modes);
-  const hasCustomMode = modes.some((m) => m.isCustom);
 
   return {
     dailyStats,

@@ -1,10 +1,12 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
+import { useAuthStore } from './store/useAuthStore';
 
 const TimerPage = lazy(() => import('./pages/TimerPage').then((m) => ({ default: m.TimerPage })));
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })));
 const QuestsPage = lazy(() => import('./pages/QuestsPage').then((m) => ({ default: m.QuestsPage })));
 const TasksPage = lazy(() => import('./pages/TasksPage').then((m) => ({ default: m.TasksPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
 
 import { useSettingsStore } from './store/useSettingsStore';
 import { useStatsStore } from './store/useStatsStore';
@@ -12,6 +14,7 @@ import { useUserProfileStore } from './store/useUserProfileStore';
 import { useQuestsStore } from './store/useQuestsStore';
 import { useTasksStore } from './store/useTasksStore';
 import { XpBar } from './components/user/XpBar';
+import { UserMenu } from './components/user/UserMenu';
 import { NotificationCenter } from './components/notifications/NotificationCenter';
 import { LoadingFallback } from './components/shared/LoadingFallback';
 import { Clock, BarChart3, Flame, Scroll, Shield, FileText } from 'lucide-react';
@@ -23,28 +26,29 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const isTopAlignedTab = activeTab === 'tasks' || activeTab === 'quests' || activeTab === 'stats';
+  const { userId, initialized, initialize: initAuth } = useAuthStore();
 
-  console.log('[App] Rendering, isInitializing:', isInitializing);
-
-  // Carregar dados iniciais
+  // Inicializar auth assim que montar
   useEffect(() => {
+    void initAuth();
+  }, [initAuth]);
+
+  // Carregar dados iniciais apenas quando autenticado
+  useEffect(() => {
+    if (!initialized) return;
+    if (!userId) {
+      setIsInitializing(false);
+      return;
+    }
     const initializeApp = async () => {
-      console.log('[App] Starting initialization...');
       try {
-        console.log('[App] Loading settings...');
         await useSettingsStore.getState().loadSettings();
-        console.log('[App] Loading modes...');
         await useSettingsStore.getState().loadModes();
-        console.log('[App] Loading stats...');
         await useStatsStore.getState().loadStats();
-        console.log('[App] Loading profile...');
         await useUserProfileStore.getState().loadProfile();
-        console.log('[App] Loading quests...');
         await useQuestsStore.getState().loadQuests();
-        console.log('[App] Loading tasks...');
         await useTasksStore.getState().loadTasks();
         await useTasksStore.getState().applyOverduePenalties();
-        console.log('[App] Initialization complete!');
       } catch (error) {
         console.error('[App] Error initializing app:', error);
         setInitError(error instanceof Error ? error.message : 'Unknown error');
@@ -52,16 +56,25 @@ function App() {
         setIsInitializing(false);
       }
     };
-    initializeApp();
-  }, []);
+    void initializeApp();
+  }, [initialized, userId]);
 
   useEffect(() => {
-    if (isInitializing || initError) return;
+    if (!initialized || !userId || isInitializing || initError) return;
     const intervalId = setInterval(() => {
       void useTasksStore.getState().applyOverduePenalties();
     }, 10 * 60 * 1000);
     return () => clearInterval(intervalId);
-  }, [isInitializing, initError]);
+  }, [initialized, userId, isInitializing, initError]);
+
+  // Auth screen
+  if (!userId) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <AuthPage />
+      </Suspense>
+    );
+  }
 
   // Error screen
   if (initError) {
@@ -114,7 +127,10 @@ function App() {
             </div>
 
             {/* User Card - Avatar + Level + XP */}
-            <XpBar variant="header-card" />
+            <div className="flex items-center gap-3">
+              <XpBar variant="header-card" />
+              <UserMenu />
+            </div>
           </div>
         </div>
       </header>

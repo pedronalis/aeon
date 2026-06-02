@@ -11,10 +11,9 @@ import { TaskEngine } from '@/domain/tasks/TaskEngine';
 import { formatDate } from '@/domain/utils/dateUtils';
 import { useStatsStore } from './useStatsStore';
 import { useNotificationsStore } from './useNotificationsStore';
-import { tableGet, tableSet } from '@/lib/storage';
-import { DB_KEYS } from '@/lib/storage';
-import { dbGet, dbSet } from '@/lib/storage';
+import { tableGet, tableSet, dbGet, dbSet, DB_KEYS } from '@/lib/storage';
 import { type UserProgress } from '@/domain/scoring/ScoreEngine';
+import { getCurrentUserId, supaGetTasks, supaSetTasks, supaGetSubtasks, supaSetSubtasks, supaGetUserProgress, supaUpdateUserProgress } from '@/lib/supabaseStorage';
 
 interface TasksStore {
   tasks: Task[];
@@ -28,10 +27,10 @@ interface TasksStore {
   createTask: (input: CreateTaskInput) => Promise<Task | null>;
   updateTask: (taskId: string, updates: TaskUpdateInput) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
-  completeTask: (taskId: string) => Promise<number>; // Retorna XP ganho
+  completeTask: (taskId: string) => Promise<number>;
 
   addSubtask: (taskId: string, title: string) => Promise<void>;
-  toggleSubtask: (subtaskId: string) => Promise<number>; // Retorna XP ganho (ou 0)
+  toggleSubtask: (subtaskId: string) => Promise<number>;
   deleteSubtask: (subtaskId: string) => Promise<void>;
   updateSubtask: (subtaskId: string, title: string) => Promise<void>;
   reorderSubtasks: (taskId: string, subtaskIds: string[]) => Promise<void>;
@@ -45,7 +44,20 @@ interface TasksStore {
   getFilteredTasks: () => Task[];
   linkPomodoro: (taskId: string) => Promise<void>;
 
-  applyOverduePenalties: () => Promise<number>; // Retorna total de XP perdido
+  applyOverduePenalties: () => Promise<number>;
+}
+
+async function dbGetUserProgress(): Promise<UserProgress> {
+  return (await dbGet<UserProgress>(DB_KEYS.userProgress)) ?? {
+    totalXp: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    lastActivityDate: null,
+  };
+}
+
+async function dbSetUserProgress(progress: UserProgress) {
+  await dbSet(DB_KEYS.userProgress, progress);
 }
 
 export const useTasksStore = create<TasksStore>((set, get) => ({
@@ -60,10 +72,18 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       const silent = options?.silent ?? false;
       if (!silent) set({ loading: true });
 
-      let tasks = await tableGet<Task>(DB_KEYS.tasks);
-      const subtasks = await tableGet<Subtask>(DB_KEYS.subtasks);
+      const userId = await getCurrentUserId();
+      let tasks: Task[];
+      let subtasks: Subtask[];
 
-      // Verificar e marcar tasks atrasadas
+      if (userId) {
+        tasks = await supaGetTasks(userId);
+        subtasks = await supaGetSubtasks(userId);
+      } else {
+        tasks = await tableGet<Task>(DB_KEYS.tasks);
+        subtasks = await tableGet<Subtask>(DB_KEYS.subtasks);
+      }
+
       const updatedTasks = tasks.map((task) => {
         if (task.status === 'pending' && TaskEngine.isOverdue(task)) {
           return { ...task, status: 'overdue' as const };
@@ -71,9 +91,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         return task;
       });
 
-      // Persistir overdue no storage se mudou
       if (JSON.stringify(tasks) !== JSON.stringify(updatedTasks)) {
-        await tableSet(DB_KEYS.tasks, updatedTasks);
+        if (userId) {
+          await supaSetTasks(userId, updatedTasks);
+        } else {
+          await tableSet(DB_KEYS.tasks, updatedTasks);
+        }
       }
 
       set({ tasks: updatedTasks, subtasks, loading: false });
@@ -88,13 +111,24 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       const { tasks } = get();
       const task = TaskEngine.createTask(input);
       const maxSortOrder = tasks.length > 0 ? Math.max(...tasks.map((t) => t.sortOrder)) + 1 : 0;
+      const newTask = { ...task, sortOrder: maxSortOrder };
+      const newTasks = [...tasks, newTask];
 
-      await tableSet(DB_KEYS.tasks, [...tasks, { ...task, sortOrder: maxSortOrder }]);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, newTasks);
+      } else {
+        await tableSet(DB_KEYS.tasks, newTasks);
+      }
 
-      const allSubtasks = await tableGet<Subtask>(DB_KEYS.subtasks);
       if (input.subtasks && input.subtasks.length > 0) {
         const createdSubs = TaskEngine.createSubtasks(task.id, input.subtasks, task.xpReward);
-        await tableSet(DB_KEYS.subtasks, [...allSubtasks, ...createdSubs]);
+        const newSubtasks = [...get().subtasks, ...createdSubs];
+        if (userId) {
+          await supaSetSubtasks(userId, newSubtasks);
+        } else {
+          await tableSet(DB_KEYS.subtasks, newSubtasks);
+        }
       }
 
       await get().loadTasks();
@@ -113,7 +147,6 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
       let updatedTasks: Task[] = tasks.map((t) => (t.id === taskId ? { ...t, ...updates } as Task : t));
 
-      // Se mudou effort, recalcular XP
       if (updates.effort !== undefined && updates.effort !== task.effort) {
         const config = TaskEngine.getEffortConfig(updates.effort);
         updatedTasks = updatedTasks.map((t) => (t.id === taskId ? { ...t, xpReward: config.xpReward, xpPenalty: config.xpPenalty } : t));
@@ -125,24 +158,38 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
           const completedXpAfter = completedSubtasks.length * xpPerSubtask;
           const xpDelta = completedXpAfter - task.xpEarned;
 
-          const allSubs = await tableGet<Subtask>(DB_KEYS.subtasks);
-          const updatedSubs = allSubs.map((s) => (s.taskId === taskId ? { ...s, xpReward: xpPerSubtask } : s));
-          await tableSet(DB_KEYS.subtasks, updatedSubs);
+          const updatedSubs = get().subtasks.map((s) => (s.taskId === taskId ? { ...s, xpReward: xpPerSubtask } : s));
+          const userId = await getCurrentUserId();
+          if (userId) {
+            await supaSetSubtasks(userId, updatedSubs);
+          } else {
+            await tableSet(DB_KEYS.subtasks, updatedSubs);
+          }
 
           updatedTasks = updatedTasks.map((t) =>
             t.id === taskId ? { ...t, xpEarned: Math.max(0, completedXpAfter) } : t
           );
 
           if (xpDelta !== 0) {
-            const progress = await dbGetProgress();
-            progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
-            await dbSetProgress(progress);
+            if (userId) {
+              const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+              await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp + xpDelta) });
+            } else {
+              const progress = await dbGetUserProgress();
+              progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
+              await dbSetUserProgress(progress);
+            }
             await useStatsStore.getState().loadStats();
           }
         }
       }
 
-      await tableSet(DB_KEYS.tasks, updatedTasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, updatedTasks);
+      } else {
+        await tableSet(DB_KEYS.tasks, updatedTasks);
+      }
       await get().loadTasks({ silent: true });
     } catch (error) {
       console.error('[TasksStore] Error updating task:', error);
@@ -152,13 +199,18 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   deleteTask: async (taskId: string) => {
     try {
       const { activeTaskId } = get();
-      const tasks = await tableGet<Task>(DB_KEYS.tasks);
+      const tasks = get().tasks;
       const filteredTasks = tasks.filter((t) => t.id !== taskId);
-      await tableSet(DB_KEYS.tasks, filteredTasks);
+      const filteredSubs = get().subtasks.filter((s) => s.taskId !== taskId);
 
-      const subtasks = await tableGet<Subtask>(DB_KEYS.subtasks);
-      const filteredSubs = subtasks.filter((s) => s.taskId !== taskId);
-      await tableSet(DB_KEYS.subtasks, filteredSubs);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, filteredTasks);
+        await supaSetSubtasks(userId, filteredSubs);
+      } else {
+        await tableSet(DB_KEYS.tasks, filteredTasks);
+        await tableSet(DB_KEYS.subtasks, filteredSubs);
+      }
 
       if (activeTaskId === taskId) set({ activeTaskId: null });
       await get().loadTasks();
@@ -182,24 +234,35 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
           ? { ...t, status: 'completed' as const, completedAt, xpEarned: t.xpReward + t.xpEarned }
           : t
       );
-      await tableSet(DB_KEYS.tasks, updatedTasks);
 
-      const allSubs = await tableGet<Subtask>(DB_KEYS.subtasks);
-      const updatedSubs = allSubs.map((s) =>
+      const updatedSubs = get().subtasks.map((s) =>
         s.taskId === taskId && !s.completed ? { ...s, completed: true, completedAt } : s
       );
-      await tableSet(DB_KEYS.subtasks, updatedSubs);
+
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, updatedTasks);
+        await supaSetSubtasks(userId, updatedSubs);
+      } else {
+        await tableSet(DB_KEYS.tasks, updatedTasks);
+        await tableSet(DB_KEYS.subtasks, updatedSubs);
+      }
 
       const totalXPEarned = xpGained + task.xpEarned + task.xpReward;
       if (totalXPEarned > 0) {
-        const progress = await dbGetProgress();
-        progress.totalXp += totalXPEarned;
-        await dbSetProgress(progress);
+        if (userId) {
+          const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+          await supaUpdateUserProgress(userId, { totalXp: progress.totalXp + totalXPEarned });
+        } else {
+          const progress = await dbGetUserProgress();
+          progress.totalXp += totalXPEarned;
+          await dbSetUserProgress(progress);
+        }
       }
 
       if (activeTaskId === taskId) set({ activeTaskId: null });
       await get().loadTasks();
-      await checkTaskAchievements();
+      await checkTaskAchievements(tasks);
       return totalXPEarned;
     } catch (error) {
       console.error('[TasksStore] Error completing task:', error);
@@ -235,18 +298,28 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         order,
       };
 
-      const allSubs = await tableGet<Subtask>(DB_KEYS.subtasks);
-      const updatedSubs = allSubs.map((s) => (s.taskId === taskId ? { ...s, xpReward: xpPerSubtask } : s));
-      await tableSet(DB_KEYS.subtasks, [...updatedSubs, newSubtask]);
+      const updatedSubs = get().subtasks.map((s) => (s.taskId === taskId ? { ...s, xpReward: xpPerSubtask } : s));
+      const newSubtasks = [...updatedSubs, newSubtask];
+      const newTasks = tasks.map((t) => (t.id === taskId ? { ...t, xpEarned: Math.max(0, completedXpAfter) } : t));
 
-      const allTasks = await tableGet<Task>(DB_KEYS.tasks);
-      const updatedTasks = allTasks.map((t) => (t.id === taskId ? { ...t, xpEarned: Math.max(0, completedXpAfter) } : t));
-      await tableSet(DB_KEYS.tasks, updatedTasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, newTasks);
+        await supaSetSubtasks(userId, newSubtasks);
+      } else {
+        await tableSet(DB_KEYS.tasks, newTasks);
+        await tableSet(DB_KEYS.subtasks, newSubtasks);
+      }
 
       if (xpDelta !== 0) {
-        const progress = await dbGetProgress();
-        progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
-        await dbSetProgress(progress);
+        if (userId) {
+          const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+          await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp + xpDelta) });
+        } else {
+          const progress = await dbGetUserProgress();
+          progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
+          await dbSetUserProgress(progress);
+        }
         await useStatsStore.getState().loadStats();
       }
 
@@ -274,17 +347,29 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
           ? { ...s, completed: newCompleted, completedAt: newCompleted ? now : undefined }
           : s
       );
-      await tableSet(DB_KEYS.subtasks, updatedSubtasks);
 
       const updatedTasks = tasks.map((t) =>
         t.id === subtask.taskId ? { ...t, xpEarned: Math.max(0, t.xpEarned + xpChange) } : t
       );
-      await tableSet(DB_KEYS.tasks, updatedTasks);
+
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetSubtasks(userId, updatedSubtasks);
+        await supaSetTasks(userId, updatedTasks);
+      } else {
+        await tableSet(DB_KEYS.subtasks, updatedSubtasks);
+        await tableSet(DB_KEYS.tasks, updatedTasks);
+      }
 
       if (xpChange !== 0) {
-        const progress = await dbGetProgress();
-        progress.totalXp = Math.max(0, progress.totalXp + xpChange);
-        await dbSetProgress(progress);
+        if (userId) {
+          const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+          await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp + xpChange) });
+        } else {
+          const progress = await dbGetUserProgress();
+          progress.totalXp = Math.max(0, progress.totalXp + xpChange);
+          await dbSetUserProgress(progress);
+        }
         await useStatsStore.getState().loadStats();
       }
 
@@ -308,42 +393,61 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       const remainingSubtasks = taskSubtasks.filter((s) => s.id !== subtaskId);
       const completedXpBefore = taskSubtasks.filter((s) => s.completed).reduce((sum, s) => sum + s.xpReward, 0);
 
+      const userId = await getCurrentUserId();
+
       if (remainingSubtasks.length > 0) {
         const xpPerSubtask = Math.floor(task.xpReward / remainingSubtasks.length);
         const completedXpAfter = remainingSubtasks.filter((s) => s.completed).length * xpPerSubtask;
         const xpDelta = completedXpAfter - completedXpBefore;
 
-        const allSubs = await tableGet<Subtask>(DB_KEYS.subtasks);
-        const updatedSubs = allSubs
+        const updatedSubs = get().subtasks
           .filter((s) => s.id !== subtaskId)
           .map((s) => (s.taskId === subtask.taskId ? { ...s, xpReward: xpPerSubtask } : s));
-        await tableSet(DB_KEYS.subtasks, updatedSubs);
-
-        const allTasks = await tableGet<Task>(DB_KEYS.tasks);
-        const updatedTasks = allTasks.map((t) =>
+        const updatedTasks = tasks.map((t) =>
           t.id === subtask.taskId ? { ...t, xpEarned: Math.max(0, completedXpAfter) } : t
         );
-        await tableSet(DB_KEYS.tasks, updatedTasks);
+
+        if (userId) {
+          await supaSetSubtasks(userId, updatedSubs);
+          await supaSetTasks(userId, updatedTasks);
+        } else {
+          await tableSet(DB_KEYS.subtasks, updatedSubs);
+          await tableSet(DB_KEYS.tasks, updatedTasks);
+        }
 
         if (xpDelta !== 0) {
-          const progress = await dbGetProgress();
-          progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
-          await dbSetProgress(progress);
+          if (userId) {
+            const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+            await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp + xpDelta) });
+          } else {
+            const progress = await dbGetUserProgress();
+            progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
+            await dbSetUserProgress(progress);
+          }
           await useStatsStore.getState().loadStats();
         }
       } else {
         const xpDelta = -completedXpBefore;
-        const allSubs = await tableGet<Subtask>(DB_KEYS.subtasks);
-        await tableSet(DB_KEYS.subtasks, allSubs.filter((s) => s.id !== subtaskId));
+        const updatedSubs = get().subtasks.filter((s) => s.id !== subtaskId);
+        const updatedTasks = tasks.map((t) => (t.id === subtask.taskId ? { ...t, xpEarned: 0 } : t));
 
-        const allTasks = await tableGet<Task>(DB_KEYS.tasks);
-        const updatedTasks = allTasks.map((t) => (t.id === subtask.taskId ? { ...t, xpEarned: 0 } : t));
-        await tableSet(DB_KEYS.tasks, updatedTasks);
+        if (userId) {
+          await supaSetSubtasks(userId, updatedSubs);
+          await supaSetTasks(userId, updatedTasks);
+        } else {
+          await tableSet(DB_KEYS.subtasks, updatedSubs);
+          await tableSet(DB_KEYS.tasks, updatedTasks);
+        }
 
         if (xpDelta !== 0) {
-          const progress = await dbGetProgress();
-          progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
-          await dbSetProgress(progress);
+          if (userId) {
+            const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+            await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp + xpDelta) });
+          } else {
+            const progress = await dbGetUserProgress();
+            progress.totalXp = Math.max(0, progress.totalXp + xpDelta);
+            await dbSetUserProgress(progress);
+          }
           await useStatsStore.getState().loadStats();
         }
       }
@@ -370,7 +474,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       const updatedSubtasks = subtasks.map((s) =>
         s.id === subtaskId ? { ...s, title: trimmedTitle } : s
       );
-      await tableSet(DB_KEYS.subtasks, updatedSubtasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetSubtasks(userId, updatedSubtasks);
+      } else {
+        await tableSet(DB_KEYS.subtasks, updatedSubtasks);
+      }
       set({ subtasks: updatedSubtasks });
     } catch (error) {
       console.error('[TasksStore] Error updating subtask:', error);
@@ -458,9 +567,14 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
 
   linkPomodoro: async (taskId: string) => {
     try {
-      const tasks = await tableGet<Task>(DB_KEYS.tasks);
+      const tasks = get().tasks;
       const updated = tasks.map((t) => (t.id === taskId ? { ...t, linkedPomodoros: t.linkedPomodoros + 1 } : t));
-      await tableSet(DB_KEYS.tasks, updated);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, updated);
+      } else {
+        await tableSet(DB_KEYS.tasks, updated);
+      }
       await get().loadTasks();
     } catch (error) {
       console.error('[TasksStore] Error linking pomodoro:', error);
@@ -474,8 +588,7 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       if (overdueTasks.length === 0) return 0;
 
       let totalPenalty = 0;
-      const allTasks = await tableGet<Task>(DB_KEYS.tasks);
-      const updatedTasks = allTasks.map((t) => {
+      const updatedTasks = tasks.map((t) => {
         const overdue = overdueTasks.find((o) => o.id === t.id);
         if (overdue) {
           totalPenalty += t.xpPenalty;
@@ -484,13 +597,22 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         return t;
       });
 
-      await tableSet(DB_KEYS.tasks, updatedTasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, updatedTasks);
+      } else {
+        await tableSet(DB_KEYS.tasks, updatedTasks);
+      }
 
       if (totalPenalty > 0) {
-        const progress = await dbGetProgress();
-        progress.totalXp = Math.max(0, progress.totalXp - totalPenalty);
-        await dbSetProgress(progress);
-
+        if (userId) {
+          const progress = (await supaGetUserProgress(userId)) ?? { totalXp: 0, currentStreak: 0, bestStreak: 0, lastActivityDate: null };
+          await supaUpdateUserProgress(userId, { totalXp: Math.max(0, progress.totalXp - totalPenalty) });
+        } else {
+          const progress = await dbGetUserProgress();
+          progress.totalXp = Math.max(0, progress.totalXp - totalPenalty);
+          await dbSetUserProgress(progress);
+        }
         await get().loadTasks({ silent: true });
         await useStatsStore.getState().loadStats();
         useNotificationsStore.getState().pushToast({
@@ -515,7 +637,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         const newOrder = taskIds.indexOf(t.id);
         return newOrder >= 0 ? { ...t, sortOrder: newOrder } : t;
       });
-      await tableSet(DB_KEYS.tasks, updatedTasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetTasks(userId, updatedTasks);
+      } else {
+        await tableSet(DB_KEYS.tasks, updatedTasks);
+      }
       set({ tasks: updatedTasks });
     } catch (error) {
       console.error('[TasksStore] Error reordering tasks:', error);
@@ -530,7 +657,12 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
         const newOrder = subtaskIds.indexOf(s.id);
         return newOrder >= 0 ? { ...s, order: newOrder } : s;
       });
-      await tableSet(DB_KEYS.subtasks, updatedSubtasks);
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supaSetSubtasks(userId, updatedSubtasks);
+      } else {
+        await tableSet(DB_KEYS.subtasks, updatedSubtasks);
+      }
       set({ subtasks: updatedSubtasks });
     } catch (error) {
       console.error('[TasksStore] Error reordering subtasks:', error);
@@ -538,45 +670,23 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   },
 }));
 
-// ------------------------------------------------------------------ helpers
-
-async function dbGetProgress(): Promise<UserProgress> {
-  return (await dbGet<UserProgress>(DB_KEYS.userProgress)) ?? {
-    totalXp: 0,
-    currentStreak: 0,
-    bestStreak: 0,
-    lastActivityDate: null,
-  };
-}
-
-async function dbSetProgress(progress: UserProgress): Promise<void> {
-  await dbSet(DB_KEYS.userProgress, progress);
-}
-
-/**
- * Verifica e desbloqueia achievements de tarefas
- */
-async function checkTaskAchievements(): Promise<void> {
+async function checkTaskAchievements(tasks: Task[]) {
   const statsStore = useStatsStore.getState();
   const achievements = statsStore.achievements;
 
-  const tasks = await tableGet<Task>(DB_KEYS.tasks);
   const completedTasks = tasks.filter((t) => t.status === 'completed');
   const totalCompleted = completedTasks.length;
 
   if (!achievements.includes('first_task') && totalCompleted >= 1) {
     await statsStore.unlockAchievement('first_task', 'tasks', 10);
-    console.log('[TasksStore] Achievement unlocked: first_task');
   }
 
   if (!achievements.includes('task_total_25') && totalCompleted >= 25) {
     await statsStore.unlockAchievement('task_total_25', 'tasks', 40);
-    console.log('[TasksStore] Achievement unlocked: task_total_25');
   }
 
   if (!achievements.includes('task_total_100') && totalCompleted >= 100) {
     await statsStore.unlockAchievement('task_total_100', 'tasks', 120);
-    console.log('[TasksStore] Achievement unlocked: task_total_100');
   }
 
   const onTimeTasks = completedTasks.filter((t) => {
@@ -586,12 +696,10 @@ async function checkTaskAchievements(): Promise<void> {
 
   if (!achievements.includes('task_streak_5') && onTimeTasks.length >= 5) {
     await statsStore.unlockAchievement('task_streak_5', 'tasks', 30);
-    console.log('[TasksStore] Achievement unlocked: task_streak_5');
   }
 
   if (!achievements.includes('task_streak_10') && onTimeTasks.length >= 10) {
     await statsStore.unlockAchievement('task_streak_10', 'tasks', 60);
-    console.log('[TasksStore] Achievement unlocked: task_streak_10');
   }
 
   const earlyTasks = completedTasks.filter((t) => {
@@ -603,25 +711,21 @@ async function checkTaskAchievements(): Promise<void> {
 
   if (!achievements.includes('task_early') && earlyTasks.length >= 3) {
     await statsStore.unlockAchievement('task_early', 'tasks', 40);
-    console.log('[TasksStore] Achievement unlocked: task_early');
   }
 
   const epicTasks = completedTasks.filter((t) => t.effort === 'epic' || t.effort === 'legendary');
 
   if (!achievements.includes('task_epic') && epicTasks.length >= 10) {
     await statsStore.unlockAchievement('task_epic', 'tasks', 50);
-    console.log('[TasksStore] Achievement unlocked: task_epic');
   }
 
   const recentlyCompleted = completedTasks[completedTasks.length - 1];
   if (recentlyCompleted) {
     if (!achievements.includes('task_linked') && recentlyCompleted.linkedPomodoros >= 10) {
       await statsStore.unlockAchievement('task_linked', 'tasks', 25);
-      console.log('[TasksStore] Achievement unlocked: task_linked');
     }
     if (!achievements.includes('task_linked_25') && recentlyCompleted.linkedPomodoros >= 25) {
       await statsStore.unlockAchievement('task_linked_25', 'tasks', 60);
-      console.log('[TasksStore] Achievement unlocked: task_linked_25');
     }
   }
 

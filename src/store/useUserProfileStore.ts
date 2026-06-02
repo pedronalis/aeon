@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { UserProfile } from '@/domain/user/UserProfile';
-import { dbGet, dbSet, DB_KEYS } from '@/lib/storage';
+import { getCurrentUserId, supaGetProfile, supaUpdateProfile } from '@/lib/supabaseStorage';
 
 interface UserProfileStore {
   profile: UserProfile | null;
@@ -10,6 +10,18 @@ interface UserProfileStore {
   updateProfile: (updates: Partial<Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
 }
 
+function mapProfile(data: Record<string, unknown>): UserProfile {
+  return {
+    id: 1,
+    username: (data.username as string) || 'Aventureiro',
+    avatarId: (data.avatar_id as string) || 'knight',
+    bio: (data.bio as string) || null,
+    displayTitle: (data.display_title as string) || null,
+    createdAt: (data.created_at as string) || new Date().toISOString(),
+    updatedAt: (data.updated_at as string) || new Date().toISOString(),
+  };
+}
+
 export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   profile: null,
   loading: false,
@@ -17,23 +29,14 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
   loadProfile: async () => {
     set({ loading: true });
     try {
-      const profile = await dbGet<UserProfile>(DB_KEYS.userProfile);
-      if (profile) {
-        set({ profile, loading: false });
-      } else {
-        // Perfil padrão
-        const newProfile: UserProfile = {
-          id: 1,
-          username: 'Aventureiro',
-          avatarId: 'knight',
-          bio: '',
-          displayTitle: '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        await dbSet(DB_KEYS.userProfile, newProfile);
-        set({ profile: newProfile, loading: false });
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        set({ loading: false });
+        return;
       }
+      const data = await supaGetProfile(userId);
+      const profile = mapProfile(data);
+      set({ profile, loading: false });
     } catch (error) {
       console.error('Failed to load profile:', error);
       set({ loading: false });
@@ -42,7 +45,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
 
   updateProfile: async (updates) => {
     try {
-      const current = get().profile ?? await dbGet<UserProfile>(DB_KEYS.userProfile);
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+
+      const current = get().profile;
       if (!current) return;
 
       const updated: UserProfile = {
@@ -50,7 +56,15 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-      await dbSet(DB_KEYS.userProfile, updated);
+
+      await supaUpdateProfile(userId, {
+        username: updates.username,
+        avatar_id: updates.avatarId,
+        bio: updates.bio,
+        display_title: updates.displayTitle,
+        updated_at: updated.updatedAt,
+      });
+
       set({ profile: updated });
     } catch (error) {
       console.error('Failed to update profile:', error);
