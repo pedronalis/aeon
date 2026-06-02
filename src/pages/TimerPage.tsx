@@ -35,7 +35,7 @@ export function TimerPage() {
   const isRunning = snapshot.state === 'RUNNING';
 
   return (
-    <div className="relative h-full flex flex-col">
+    <div className="relative h-full flex flex-col overflow-hidden">
       {/* Ambient glow based on current mode */}
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-700"
@@ -44,8 +44,8 @@ export function TimerPage() {
         }}
       />
 
-      {/* Mode selector */}
-      <div className="relative z-10 flex-shrink-0 pt-5 md:pt-8 px-4 md:px-8">
+      {/* Mode selector - topo */}
+      <div className="relative z-10 flex-shrink-0 pt-4 md:pt-6 px-4 md:px-8">
         <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
           {modes.map((mode) => {
             const isActive = mode.id === snapshot.mode.id;
@@ -74,19 +74,19 @@ export function TimerPage() {
           })}
         </div>
         {snapshot.mode.disclaimer && (
-          <p className="text-text-muted text-[11px] text-center opacity-50 mt-2 font-body animate-fade-in">
+          <p className="text-text-muted text-[11px] text-center opacity-50 mt-1.5 font-body animate-fade-in">
             {snapshot.mode.disclaimer}
           </p>
         )}
       </div>
 
-      {/* Timer Hero */}
-      <div className="relative z-10 flex-1 flex items-center justify-center min-h-0 -mt-2 md:-mt-4">
+      {/* Timer Hero - scrollable area para evitar overflow */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-start pt-4 sm:pt-6 pb-4 overflow-y-auto overflow-x-hidden">
         <TimerDisplay />
       </div>
 
-      {/* Bottom bar */}
-      <div className="relative z-10 flex-shrink-0 pb-5 md:pb-8 flex flex-col items-center gap-4">
+      {/* Bottom bar - sempre visível */}
+      <div className="relative z-10 flex-shrink-0 pb-4 md:pb-6 flex flex-col items-center gap-3">
         <div className="flex items-center gap-2 text-text-muted text-[11px] font-heading uppercase tracking-[0.2em] opacity-70">
           <span>
             {snapshot.completedPomodoros === 0

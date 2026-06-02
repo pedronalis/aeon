@@ -46,51 +46,50 @@ export function TimerDisplay() {
     ? 'Nenhum ritual selado ainda'
     : `${snapshot.completedPomodoros} total`;
 
-  return (
-    <div className="flex flex-col items-center gap-2 sm:gap-3">
-      <div className="flex flex-col items-center gap-2 sm:gap-3">
-        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-heading uppercase tracking-[0.3em] text-text-muted mb-3">
-          <PhaseIcon size={12} className="text-text-muted" style={phaseToneStyle} />
-          <span style={phaseToneStyle}>{phaseLabel}</span>
-        </div>
+  // Responsivo: SVG menor em telas pequenas
+  const svgSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 220 : 280;
 
-        {/* Timer Circle - Minimal Arc */}
-        <div className="relative scale-[0.9] sm:scale-100 lg:scale-[1.05]">
-          <div
-            className={`absolute -inset-4 rounded-full blur-xl ${glowOpacityClass}`}
-            style={glowStyle}
-          />
-          <CircularProgress
-            percentage={progressPercentage}
-            size={300}
-            strokeWidth={4}
-            color={progressColor}
-          >
-            {/* Timer centralizado */}
-            <div
-              className={`
-                typography-hero
-                ${isLastMinute
-                  ? 'animate-pulse-timer'
-                  : ''
-                }
-                ${isRunning ? 'text-glow' : ''}
-                transition-colors duration-300
-              `}
-              style={{
-                fontVariantNumeric: 'tabular-nums',
-                color: isRunning ? progressColor : undefined,
-              }}
-            >
-              {formatTime(snapshot.remainingSeconds)}
-            </div>
-          </CircularProgress>
-        </div>
+  return (
+    <div className="flex flex-col items-center w-full max-w-md mx-auto">
+      {/* Fase atual */}
+      <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-heading uppercase tracking-[0.3em] text-text-muted mb-4 sm:mb-6">
+        <PhaseIcon size={12} className="text-text-muted" style={phaseToneStyle} />
+        <span style={phaseToneStyle}>{phaseLabel}</span>
       </div>
 
-      <div className="flex flex-col items-center gap-4 sm:gap-5 w-full">
-        {/* Pomodoro count - ritual summary */}
-        <div className="parchment-panel px-3 sm:px-4 py-3 rounded-xl w-full max-w-[300px] sm:max-w-[320px] mt-14 sm:mt-16">
+      {/* Timer Circle */}
+      <div className="relative">
+        <div
+          className={`absolute -inset-4 rounded-full blur-xl ${glowOpacityClass}`}
+          style={glowStyle}
+        />
+        <CircularProgress
+          percentage={progressPercentage}
+          size={svgSize}
+          strokeWidth={4}
+          color={progressColor}
+        >
+          <div
+            className={`
+              font-display text-timer-sm sm:text-timer-md lg:text-timer-lg text-primary drop-shadow-lg
+              ${isLastMinute ? 'animate-pulse-timer' : ''}
+              ${isRunning ? 'text-glow' : ''}
+              transition-colors duration-300
+            `}
+            style={{
+              fontVariantNumeric: 'tabular-nums',
+              color: isRunning ? progressColor : undefined,
+            }}
+          >
+            {formatTime(snapshot.remainingSeconds)}
+          </div>
+        </CircularProgress>
+      </div>
+
+      {/* Info cards abaixo do timer */}
+      <div className="mt-6 sm:mt-8 w-full space-y-4">
+        {/* Pomodoro count */}
+        <div className="parchment-panel px-4 py-3 rounded-xl w-full max-w-[320px] mx-auto">
           <div className="flex items-center gap-3">
             <div className="parchment-primary p-2 rounded-lg">
               <Flame size={14} className="text-primary" />
@@ -106,7 +105,8 @@ export function TimerDisplay() {
           </div>
         </div>
 
-        <div className="-mb-6 sm:-mb-8 w-full flex justify-center">
+        {/* Timeline */}
+        <div className="w-full flex justify-center">
           <RitualTimeline />
         </div>
       </div>
