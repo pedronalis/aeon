@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Scroll, FileText, Search, X, AlertTriangle, Calendar, CalendarRange, Clock, CheckCircle } from 'lucide-react';
 import { useTasksStore } from '@/store/useTasksStore';
-import { Container } from '@/components/shared/Container';
 import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
 import { TaskCard } from '@/components/tasks/TaskCard';
@@ -302,13 +301,11 @@ export function TasksPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="2xl">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-text-secondary font-body animate-pulse">
-            Carregando pergaminhos...
-          </p>
-        </div>
-      </Container>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-text-secondary font-body animate-pulse">
+          Carregando pergaminhos...
+        </p>
+      </div>
     );
   }
 
@@ -328,8 +325,8 @@ export function TasksPage() {
   };
 
   return (
-    <Container maxWidth="2xl" className="animate-fade-in" noPadding>
-      <div className="px-4 py-4 md:py-6 lg:py-8 md:px-6 lg:px-8">
+    <div className="animate-fade-in h-full overflow-y-auto">
+      <div className="px-4 py-4 md:py-6 lg:py-8 md:px-6 lg:px-8 max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 mb-6 md:mb-8">
           <div className="flex items-center gap-3">
@@ -533,6 +530,6 @@ export function TasksPage() {
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleCreateTask}
       />
-    </Container>
+    </div>
   );
 }

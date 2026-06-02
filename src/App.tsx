@@ -17,23 +17,29 @@ import { XpBar } from './components/user/XpBar';
 import { UserMenu } from './components/user/UserMenu';
 import { NotificationCenter } from './components/notifications/NotificationCenter';
 import { LoadingFallback } from './components/shared/LoadingFallback';
-import { Clock, BarChart3, Flame, Scroll, Shield, FileText } from 'lucide-react';
+import { Flame, Monitor, BarChart3, Shield, FileText, Target, Menu, X } from 'lucide-react';
 
 type Tab = 'timer' | 'stats' | 'quests' | 'tasks' | 'settings';
+
+const NAV_ITEMS: { id: Tab; label: string; icon: typeof Monitor; mobileLabel: string }[] = [
+  { id: 'timer', label: 'Timer', icon: Monitor, mobileLabel: 'Timer' },
+  { id: 'stats', label: 'Crônica', icon: BarChart3, mobileLabel: 'Crônica' },
+  { id: 'quests', label: 'Missões', icon: Target, mobileLabel: 'Missões' },
+  { id: 'tasks', label: 'Pergaminhos', icon: FileText, mobileLabel: 'Pergaminhos' },
+  { id: 'settings', label: 'Reino', icon: Shield, mobileLabel: 'Reino' },
+];
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer');
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
-  const isTopAlignedTab = activeTab === 'tasks' || activeTab === 'quests' || activeTab === 'stats';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { userId, initialized, initialize: initAuth } = useAuthStore();
 
-  // Inicializar auth assim que montar
   useEffect(() => {
     void initAuth();
   }, [initAuth]);
 
-  // Carregar dados iniciais apenas quando autenticado
   useEffect(() => {
     if (!initialized) return;
     if (!userId) {
@@ -67,6 +73,11 @@ function App() {
     return () => clearInterval(intervalId);
   }, [initialized, userId, isInitializing, initError]);
 
+  // Close sidebar on mobile when tab changes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [activeTab]);
+
   // Auth screen
   if (!userId) {
     return (
@@ -79,15 +90,14 @@ function App() {
   // Error screen
   if (initError) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0f0d0b', color: '#e8dcc4' }}>
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center space-y-4 p-8">
           <div className="text-4xl">&#9760;</div>
-          <p className="text-xl font-display font-bold" style={{ color: '#9b2335' }}>Erro ao inicializar</p>
-          <p className="font-body" style={{ color: '#b5a68a' }}>{initError}</p>
+          <p className="text-xl font-display font-bold text-error">Erro ao inicializar</p>
+          <p className="font-body text-text-secondary">{initError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded font-heading"
-            style={{ backgroundColor: '#c9a227', color: '#0f0d0b' }}
+            className="px-4 py-2 rounded bg-primary text-background font-heading"
           >
             Recarregar
           </button>
@@ -99,130 +109,137 @@ function App() {
   // Loading screen
   if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0f0d0b', color: '#e8dcc4' }}>
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center space-y-4">
           <div className="text-4xl animate-torch-flicker">&#128293;</div>
-          <p className="font-heading" style={{ color: '#b5a68a' }}>Carregando...</p>
+          <p className="font-heading text-text-secondary">Carregando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-text">
+    <div className="flex h-screen overflow-hidden bg-background text-text">
       <NotificationCenter />
-      {/* Header Premium Medieval */}
-      <header className="parchment-panel border-b border-primary/20 shadow-elevation-2 flex-shrink-0">
-        <div className="container mx-auto px-4 py-4 md:py-5">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo + Nome */}
-            <div className="flex items-center gap-3">
-              <Flame
-                size={26}
-                className="text-primary animate-gold-breathe flex-shrink-0"
-              />
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gilded-primary font-display drop-shadow-lg">
-                Aeon
-              </h1>
-            </div>
 
-            {/* User Card - Avatar + Level + XP */}
-            <div className="flex items-center gap-3">
-              <XpBar variant="header-card" />
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Tab Navigation Medieval */}
-      <nav className="border-b border-primary/10 bg-background/80 flex-shrink-0" role="tablist">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-3 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
-            <button
-              onClick={() => setActiveTab('timer')}
-              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'timer' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
-              role="tab"
-              aria-selected={activeTab === 'timer'}
-            >
-              <Clock
-                size={18}
-                className={`transition-transform duration-normal ${
-                  activeTab === 'timer' ? 'scale-110 animate-gold-breathe' : 'group-hover:scale-105'
-                }`}
-              />
-              <span className="hidden md:inline font-heading">Timer</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'stats' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
-              role="tab"
-              aria-selected={activeTab === 'stats'}
-            >
-              <BarChart3
-                size={18}
-                className={`transition-transform duration-normal ${
-                  activeTab === 'stats' ? 'scale-110 animate-gold-breathe' : 'group-hover:scale-105'
-                }`}
-              />
-              <span className="hidden md:inline font-heading">Crônica</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('quests')}
-              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'quests' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
-              role="tab"
-              aria-selected={activeTab === 'quests'}
-            >
-              <Scroll
-                size={18}
-                className={`transition-transform duration-normal ${
-                  activeTab === 'quests' ? 'scale-110 animate-gold-breathe' : 'group-hover:scale-105'
-                }`}
-              />
-              <span className="hidden md:inline font-heading">Missões</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('tasks')}
-              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'tasks' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
-              role="tab"
-              aria-selected={activeTab === 'tasks'}
-            >
-              <FileText
-                size={18}
-                className={`transition-transform duration-normal ${
-                  activeTab === 'tasks' ? 'scale-110 animate-gold-breathe' : 'group-hover:scale-105'
-                }`}
-              />
-              <span className="hidden md:inline font-heading">Pergaminhos</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`tab group min-h-[44px] focus-visible:!ring-2 focus-visible:!ring-primary focus-visible:!ring-offset-2 focus-visible:!ring-offset-background focus-visible:!outline-none ${activeTab === 'settings' ? 'tab-active font-semibold' : 'font-medium hover:text-primary-light'}`}
-              role="tab"
-              aria-selected={activeTab === 'settings'}
-            >
-              <Shield
-                size={18}
-                className={`transition-transform duration-normal ${
-                  activeTab === 'settings' ? 'scale-110 animate-gold-breathe' : 'group-hover:scale-105'
-                }`}
-              />
-              <span className="hidden md:inline font-heading">Reino</span>
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main role="tabpanel" className="flex-1 flex overflow-y-auto">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
         <div
-          className={`
-            flex-1 w-full flex flex-col items-center
-            ${isTopAlignedTab ? 'justify-start' : 'justify-center'}
-          `}
-        >
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed md:static inset-y-0 left-0 z-50
+          flex flex-col
+          w-64 bg-background-lighter border-r border-primary/10
+          transition-transform duration-300 ease-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          shadow-elevation-3 md:shadow-none
+        `}
+      >
+        {/* Sidebar Header - Logo */}
+        <div className="flex items-center justify-between px-4 py-5 border-b border-primary/10">
+          <div className="flex items-center gap-3">
+            <div className="parchment-primary forge-border-primary p-1.5 rounded-lg">
+              <Flame size={20} className="text-primary animate-gold-breathe" />
+            </div>
+            <h1 className="text-xl font-bold text-gilded-primary font-display">Aeon</h1>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface transition-colors"
+            aria-label="Fechar menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" role="navigation">
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                  font-heading text-sm transition-all duration-200
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+                  ${isActive
+                    ? 'parchment-primary forge-border-primary text-primary shadow-torch-sm'
+                    : 'text-text-secondary hover:text-text hover:bg-surface/60'
+                  }
+                `}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon
+                  size={18}
+                  className={`flex-shrink-0 transition-transform duration-300 ${
+                    isActive ? 'text-primary' : ''
+                  }`}
+                />
+                <span>{item.label}</span>
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer - User + Theme */}
+        <div className="px-3 py-4 border-t border-primary/10 space-y-3">
+          <div className="px-3">
+            <XpBar variant="compact" showTitle />
+          </div>
+          <div className="px-3">
+            <UserMenu />
+          </div>
+          <div className="px-3 pt-1">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-torch-flicker" />
+                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                <div className="w-1.5 h-1.5 rounded-full bg-success" />
+              </div>
+              <span className="font-heading">v1.0.0</span>
+            </div>
+            <p className="text-[10px] text-text-muted/70 italic font-body mt-1 flex items-center gap-1">
+              Pela Chama Eterna
+              <Flame size={10} className="text-primary/60" />
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar - Mobile header */}
+        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-primary/10 bg-background-lighter flex-shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg text-text-secondary hover:text-text hover:bg-surface transition-colors"
+            aria-label="Abrir menu"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="flex items-center gap-2">
+            <Flame size={18} className="text-primary animate-gold-breathe" />
+            <span className="font-bold text-gilded-primary font-display text-lg">Aeon</span>
+          </div>
+          <div className="w-10" /> {/* spacer */}
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<LoadingFallback />}>
-            <div key={activeTab} className="animate-fade-in w-full">
+            <div key={activeTab} className="animate-fade-in">
               {activeTab === 'timer' && <TimerPage />}
               {activeTab === 'stats' && <StatsPage />}
               {activeTab === 'quests' && <QuestsPage />}
@@ -230,38 +247,8 @@ function App() {
               {activeTab === 'settings' && <SettingsPage />}
             </div>
           </Suspense>
-        </div>
-      </main>
-
-      {/* Footer Medieval */}
-      <footer className="parchment-panel border-t border-primary/10 py-4 md:py-5 flex-shrink-0 mt-auto">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-            {/* Branding */}
-            <div className="flex items-center gap-3 text-sm font-heading">
-              <span className="text-gilded-primary font-semibold">Aeon</span>
-              <span className="text-text-muted">|</span>
-              <span className="text-text-secondary">v1.0.0</span>
-            </div>
-
-            {/* Medieval phrase */}
-            <div className="flex items-center gap-2 text-sm text-text-secondary font-body italic">
-              Pela Chama Eterna
-              <Flame size={14} className="text-primary animate-torch-flicker" />
-            </div>
-
-            {/* Theme indicator */}
-            <div className="hidden md:flex items-center gap-2 text-sm font-heading">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-torch-flicker" />
-                <div className="w-2 h-2 rounded-full bg-accent" />
-                <div className="w-2 h-2 rounded-full bg-success" />
-              </div>
-              <span className="text-text-muted">Medieval Premium</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+        </main>
+      </div>
     </div>
   );
 }

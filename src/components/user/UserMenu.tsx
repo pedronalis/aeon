@@ -10,11 +10,11 @@ export function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-heading text-text-secondary hover:text-text hover:bg-surface transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-heading text-text-secondary hover:text-text hover:bg-surface transition-colors"
         title="Conta"
       >
         <User size={16} />
-        <span className="hidden md:inline max-w-[120px] truncate">{email}</span>
+        <span className="truncate">{email}</span>
       </button>
 
       {open && (
@@ -23,7 +23,7 @@ export function UserMenu() {
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 parchment-panel rounded-xl forge-border-primary shadow-elevation-2 z-50 py-2">
+          <div className="absolute left-0 bottom-full mb-2 w-56 parchment-panel rounded-xl forge-border-primary shadow-elevation-2 z-50 py-2">
             <div className="px-4 py-2 border-b border-primary/10">
               <p className="text-xs text-text-muted font-body">Logado como</p>
               <p className="text-sm font-heading text-text truncate">{email}</p>

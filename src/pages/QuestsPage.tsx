@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuestsStore } from '@/store/useQuestsStore';
 import { QuestCard } from '@/components/gamification/QuestCard';
-import { Container } from '@/components/shared/Container';
 import { Scroll, Calendar, CalendarRange, Target, Clock } from 'lucide-react';
 
 export function QuestsPage() {
@@ -56,17 +55,15 @@ export function QuestsPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="2xl">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-text-secondary font-body animate-pulse">Carregando missões...</p>
-        </div>
-      </Container>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-text-secondary font-body animate-pulse">Carregando missões...</p>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="2xl" className="animate-fade-in" noPadding>
-      <div className="px-4 py-4 md:py-6 lg:py-8 md:px-6 lg:px-8">
+    <div className="animate-fade-in h-full overflow-y-auto">
+      <div className="px-4 py-4 md:py-6 lg:py-8 md:px-6 lg:px-8 max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6 md:mb-8">
           <div className="parchment-primary forge-border-primary p-3 rounded-xl">
@@ -294,7 +291,7 @@ export function QuestsPage() {
           </div>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }
 

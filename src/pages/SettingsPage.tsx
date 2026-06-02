@@ -6,7 +6,6 @@ import { MEDIEVAL_AVATARS, getAvatarById } from '@/domain/user/avatars';
 import { calculateLevel } from '@/domain/scoring/achievements';
 import { getTitleForLevel } from '@/domain/user/titles';
 import { Bell, Trash2, AlertTriangle, Info, User, Volume2, Crown, Shield, Sword, ZoomIn, Zap } from 'lucide-react';
-import { Container } from '@/components/shared/Container';
 import { Switch } from '@/components/shared/Switch';
 import { Modal } from '@/components/shared/Modal';
 import { Button } from '@/components/shared/Button';
@@ -74,8 +73,8 @@ export function SettingsPage() {
 
   return (
     <>
-      <Container maxWidth="2xl" className="animate-fade-in">
-        <div className="py-4 md:py-6 lg:py-8">
+      <div className="animate-fade-in h-full overflow-y-auto">
+        <div className="py-4 md:py-6 lg:py-8 px-4 md:px-6 lg:px-8 max-w-[1600px] mx-auto">
           {/* Header da pagina */}
           <div className="flex items-center gap-3 mb-8">
             <div className="parchment-primary forge-border-primary p-3 rounded-xl">
@@ -420,7 +419,7 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
-      </Container>
+      </div>
 
       {/* Modal de Confirmação de Reset */}
       <Modal

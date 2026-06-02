@@ -4,7 +4,6 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { TimerDisplay } from '@/components/timer/TimerDisplay';
 import { CommandPanel } from '@/components/timer/CommandPanel';
 import { ActiveTaskPanel } from '@/components/tasks/ActiveTaskPanel';
-import { Container } from '@/components/shared/Container';
 import { Select } from '@/components/shared/Select';
 import { getModeIcon } from '@/utils/modeIcons';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -17,7 +16,6 @@ export function TimerPage() {
 
   useKeyboardShortcuts();
 
-  // Carregar modo ativo ao montar
   useEffect(() => {
     const activeMode = modes.find((m) => m.id === settings.activeMode);
     if (activeMode && activeMode.id !== snapshot.mode.id) {
@@ -25,7 +23,6 @@ export function TimerPage() {
     }
   }, [settings.activeMode, modes]);
 
-  // Preparar opcoes do select com icones - usa accentColor do próprio modo
   const selectOptions: SelectOption[] = useMemo(() => {
     return modes.map((mode) => ({
       value: mode.id,
@@ -36,69 +33,51 @@ export function TimerPage() {
   }, [modes]);
 
   return (
-    <Container maxWidth="2xl" className="animate-fade-in">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
 
-      {/* Command Center Layout - Three Column */}
-      <div className="flex items-center justify-center py-6">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr,320px] xl:grid-cols-[minmax(480px,600px),minmax(340px,380px),minmax(340px,380px)] gap-6 lg:gap-8 xl:gap-10">
-
-          {/* Left Panel - Timer Hero */}
-          <div
-            className="parchment-ultra rounded-2xl p-6 sm:p-8 lg:p-10 forge-border-primary shadow-torch-primary order-1 lg:order-1 animate-slide-in-up"
-            style={{ animationDelay: '40ms' }}
-          >
-            <div className="flex flex-col h-full min-h-[400px] sm:min-h-[450px] lg:min-h-[500px]">
-              {/* Header: Mode Selector - Centered */}
-              <div className="flex justify-center mb-3 lg:mb-4">
-                <div className="w-full max-w-[320px] min-w-[240px] sm:min-w-[280px]">
-                  <Select
-                    value={snapshot.mode.id}
-                    options={selectOptions}
-                    onChange={(value) => {
-                      const mode = modes.find((m) => m.id === value);
-                      if (mode) {
-                        setMode(mode);
-                        useSettingsStore.getState().updateSettings({ activeMode: mode.id });
-                      }
-                    }}
-                    disabled={snapshot.state === 'RUNNING'}
-                    placeholder="Escolha seu Ritual"
-                  />
-                </div>
-              </div>
-
-              {/* Disclaimer - Compacto */}
-              {snapshot.mode.disclaimer && (
-                <p className="text-text-secondary text-xs text-center opacity-75 animate-fade-in font-body mb-0">
-                  {snapshot.mode.disclaimer}
-                </p>
-              )}
-
-              {/* Timer Display - Centered Hero */}
-              <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                <TimerDisplay />
-              </div>
-            </div>
+        {/* Left: Timer Hero */}
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center
+                        parchment-ultra rounded-2xl p-6 sm:p-8 lg:p-10
+                        forge-border-primary shadow-torch-primary animate-slide-in-up">
+          <div className="w-full max-w-[380px] mb-4">
+            <Select
+              value={snapshot.mode.id}
+              options={selectOptions}
+              onChange={(value) => {
+                const mode = modes.find((m) => m.id === value);
+                if (mode) {
+                  setMode(mode);
+                  useSettingsStore.getState().updateSettings({ activeMode: mode.id });
+                }
+              }}
+              disabled={snapshot.state === 'RUNNING'}
+              placeholder="Escolha seu Ritual"
+            />
           </div>
 
-          {/* Center Panel - Command Panel */}
-          <div
-            className="parchment-ultra rounded-2xl p-6 sm:p-8 forge-border-primary shadow-elevation-2 order-2 lg:order-2 animate-slide-in-up"
-            style={{ animationDelay: '120ms' }}
-          >
+          {snapshot.mode.disclaimer && (
+            <p className="text-text-muted text-xs text-center opacity-60 animate-fade-in font-body mb-2">
+              {snapshot.mode.disclaimer}
+            </p>
+          )}
+
+          <div className="flex-1 flex items-center justify-center w-full">
+            <TimerDisplay />
+          </div>
+        </div>
+
+        {/* Right: Controls + Active Task */}
+        <div className="w-full lg:w-[340px] xl:w-[380px] flex flex-col gap-6">
+          <div className="parchment-ultra rounded-2xl p-6 forge-border-primary shadow-elevation-2 animate-slide-in-up">
             <CommandPanel />
           </div>
-
-          {/* Right Panel - Active Task Panel */}
-          <div
-            className="parchment-ultra rounded-2xl p-6 sm:p-8 forge-border-primary shadow-elevation-2 order-3 lg:col-span-2 xl:col-span-1 xl:order-3 animate-slide-in-up"
-            style={{ animationDelay: '200ms' }}
-          >
+          <div className="flex-1 parchment-ultra rounded-2xl p-6 forge-border-primary shadow-elevation-2 animate-slide-in-up">
             <ActiveTaskPanel />
           </div>
-
         </div>
+
       </div>
-    </Container>
+    </div>
   );
 }
