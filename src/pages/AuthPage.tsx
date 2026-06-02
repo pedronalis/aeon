@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Input } from '@/components/shared/Input';
 import { Button } from '@/components/shared/Button';
-import { Flame, Mail, Lock, Sword, Shield, Scroll } from 'lucide-react';
+import { Flame, Mail, Lock, Sword, Shield, Scroll, AlertTriangle } from 'lucide-react';
 
 export function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,6 +10,7 @@ export function AuthPage() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const auth = useAuthStore();
+  const isDisabled = auth.loading || auth.isConfigError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +40,21 @@ export function AuthPage() {
             </p>
           </div>
 
-          {auth.error && (
-            <div className="mb-6 p-3 rounded-lg bg-error/10 border border-error/30 text-error text-sm font-body">
+          {auth.isConfigError && (
+            <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/30 text-error text-sm font-body flex items-start gap-3">
+              <AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold">O Reino está fechado</p>
+                <p>
+                  {auth.error ?? 'O servidor de autenticação não está configurado. Entre em contato com o administrador do Reino.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!auth.isConfigError && auth.error && (
+            <div className="mb-6 p-3 rounded-lg bg-error/10 border border-error/30 text-error text-sm font-body flex items-center gap-2">
+              <AlertTriangle size={16} />
               {auth.error}
             </div>
           )}
@@ -53,6 +67,7 @@ export function AuthPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 leftIcon={<Sword size={18} className="text-text-secondary" />}
+                disabled={isDisabled}
               />
             )}
 
@@ -64,6 +79,7 @@ export function AuthPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               leftIcon={<Mail size={18} className="text-text-secondary" />}
+              disabled={isDisabled}
             />
 
             <Input
@@ -75,6 +91,7 @@ export function AuthPage() {
               required
               leftIcon={<Lock size={18} className="text-text-secondary" />}
               helperText={!isLogin ? 'Mínimo 6 caracteres' : undefined}
+              disabled={isDisabled}
             />
 
             <Button
@@ -83,6 +100,7 @@ export function AuthPage() {
               size="lg"
               fullWidth
               loading={auth.loading}
+              disabled={isDisabled}
               icon={isLogin ? <Shield size={18} /> : <Scroll size={18} />}
             >
               {isLogin ? 'Entrar no Reino' : 'Forjar Conta'}

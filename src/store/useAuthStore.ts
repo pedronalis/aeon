@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, supabaseConfigError } from '@/lib/supabase';
 
 interface AuthStore {
   userId: string | null;
@@ -7,6 +7,7 @@ interface AuthStore {
   loading: boolean;
   initialized: boolean;
   error: string | null;
+  isConfigError: boolean;
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
@@ -21,9 +22,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
   loading: true,
   initialized: false,
   error: null,
+  isConfigError: false,
 
   initialize: async () => {
     set({ loading: true });
+    if (!isSupabaseConfigured) {
+      set({ loading: false, initialized: true, error: supabaseConfigError ?? undefined, isConfigError: true });
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       set({
@@ -31,6 +37,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         email: session?.user?.email ?? null,
         loading: false,
         initialized: true,
+        isConfigError: false,
       });
 
       supabase.auth.onAuthStateChange((_event, session) => {
@@ -39,13 +46,18 @@ export const useAuthStore = create<AuthStore>((set) => ({
           email: session?.user?.email ?? null,
         });
       });
-    } catch {
-      set({ loading: false, initialized: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha no portal do Reino. Verifique a conexão.';
+      set({ loading: false, initialized: true, error: msg, isConfigError: false });
     }
   },
 
   signIn: async (email, password) => {
     set({ loading: true, error: null });
+    if (!isSupabaseConfigured) {
+      set({ loading: false, error: supabaseConfigError ?? 'Configuração ausente', isConfigError: true });
+      return { error: supabaseConfigError ?? 'Configuração ausente' };
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     set({ loading: false });
     if (error) {
@@ -58,6 +70,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   signUp: async (email, password, username) => {
     set({ loading: true, error: null });
+    if (!isSupabaseConfigured) {
+      set({ loading: false, error: supabaseConfigError ?? 'Configuração ausente', isConfigError: true });
+      return { error: supabaseConfigError ?? 'Configuração ausente' };
+    }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
